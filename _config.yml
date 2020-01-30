@@ -2,12 +2,12 @@
 title: 阿鼎的Blog
 SEOTitle: 阿鼎的博客 | BY Blog
 header-img: img/post-bg-desk.jpg
-email: qiubaiying@gmail.com
+email: ywd28@163.com
 description: "不想变形的金，不是好刚"
 keyword: "BY, BY Blog, 阿鼎的博客, yorkwade"
 url: "http://yorkwade.github.io"          # your host, for absolute URL
 baseurl: ""      # for example, '/blog' if your blog hosted on 'host/blog'
-github_repo: "https://github.com/qiubaiying/qiubaiying.github.io.git" # you code repository
+github_repo: "https://github.com/YorkWade/YorkWade.github.io.git" # you code repository
 
 # Sidebar settings
 sidebar: true                           # whether or not using Sidebar.
