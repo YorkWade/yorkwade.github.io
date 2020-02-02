@@ -145,10 +145,10 @@ LRU(Least Recently Used) Cache是一种缓存替换算法，如果超过容量�
 
 leveldb中主要涉及4个数据结构，是依次递进的关系，分别是：
 
-    LRUHandle        //链表
-    HandleTable      //哈希表
-    LRUCache         //LRU缓存
-    ShardedLRUCache  //LRU缓存分组
+- LRUHandle        //链表
+- HandleTable      //哈希表
+- LRUCache         //LRU缓存
+- ShardedLRUCache  //LRU缓存分组
 
 
 ```
