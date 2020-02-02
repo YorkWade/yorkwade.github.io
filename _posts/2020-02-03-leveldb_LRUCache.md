@@ -274,7 +274,7 @@ Cache::Handle* LRUCache::Insert(
   LRUHandle* old = table_.Insert(e);
   if (old != NULL) {        //如果哈希表中存在已有值。
     LRU_Remove(old);        //将LRU队列中已存在的值删除
-    Unref(old);
+    Unref(old);             //引用计数减一
   }
 
   while (usage_ > capacity_ && lru_.next != &lru_) {    //如果已用数值大于队列容量
@@ -288,10 +288,108 @@ Cache::Handle* LRUCache::Insert(
 }
 ```
 
+```objc
+// A single shard of sharded cache.
+当时leveldb编写比较早，还没有智能指针，这部分可以使用share_ptr代替
+void LRUCache::Unref(LRUHandle* e) {
+  assert(e->refs > 0);
+  e->refs--;
+  if (e->refs <= 0) {                   //当计数为0时
+    usage_ -= e->charge;
+    (*e->deleter)(e->key(), e->value);  //删除节点
+    free(e);
+  }
+}
+```
+查找和删除函数，水到渠成。
+```objc
+Cache::Handle* LRUCache::Lookup(const Slice& key, uint32_t hash) {
+  MutexLock l(&mutex_);
+  LRUHandle* e = table_.Lookup(key, hash);
+  if (e != NULL) {
+    e->refs++;
+    LRU_Remove(e);
+    LRU_Append(e);
+  }
+  return reinterpret_cast<Cache::Handle*>(e);
+}
+```
+
+```objc
+void LRUCache::Erase(const Slice& key, uint32_t hash) {
+  MutexLock l(&mutex_);
+  LRUHandle* e = table_.Remove(key, hash);
+  if (e != NULL) {
+    LRU_Remove(e);
+    Unref(e);
+  }
+}
+```
+
+### LRUHandle
+
+ShardedLRUCache类，实际上到S3，一个标准的LRU Cache已经实现了，为何还要更近一步呢？答案就是速度！
+为了多线程访问，尽可能快速，减少锁开销，ShardedLRUCache内部有16个LRUCache，查找Key时首先计算key属于哪一个分片，分片的计算方法是取32位hash值的高4位，然后在相应的LRUCache中进行查找，这样就大大减少了多线程的访问锁的开销。它就是一个包装类，实现都在LRUCache类中。
+
+
+```objc
+static const int kNumShardBits = 4;
+static const int kNumShards = 1 << kNumShardBits;
+
+class ShardedLRUCache : public Cache {
+ private:
+  LRUCache shard_[kNumShards];          //LRUCache数组
+  port::Mutex id_mutex_;
+  uint64_t last_id_;
+
+  static inline uint32_t HashSlice(const Slice& s) {
+    return Hash(s.data(), s.size(), 0);
+  }
+
+  static uint32_t Shard(uint32_t hash) {
+    return hash >> (32 - kNumShardBits);
+  }
+
+ public:
+  explicit ShardedLRUCache(size_t capacity)
+      : last_id_(0) {
+    const size_t per_shard = (capacity + (kNumShards - 1)) / kNumShards;
+    for (int s = 0; s < kNumShards; s++) {
+      shard_[s].SetCapacity(per_shard);
+    }
+  }
+  virtual ~ShardedLRUCache() { }
+  virtual Handle* Insert(const Slice& key, void* value, size_t charge,
+                         void (*deleter)(const Slice& key, void* value)) {
+    const uint32_t hash = HashSlice(key);
+    return shard_[Shard(hash)].Insert(key, hash, value, charge, deleter);
+  }
+  virtual Handle* Lookup(const Slice& key) {
+    const uint32_t hash = HashSlice(key);
+    return shard_[Shard(hash)].Lookup(key, hash);
+  }
+  virtual void Release(Handle* handle) {
+    LRUHandle* h = reinterpret_cast<LRUHandle*>(handle);
+    shard_[Shard(h->hash)].Release(handle);
+  }
+  virtual void Erase(const Slice& key) {
+    const uint32_t hash = HashSlice(key);
+    shard_[Shard(hash)].Erase(key, hash);
+  }
+  virtual void* Value(Handle* handle) {
+    return reinterpret_cast<LRUHandle*>(handle)->value;
+  }
+  virtual uint64_t NewId() {
+    MutexLock l(&id_mutex_);
+    return ++(last_id_);
+  }
+};
+```
 
 ### 参考：
 
 - [leveldb中的LRUCache设计](https://bean-li.github.io/leveldb-LRUCache/)
+- [leveldb源码分析1](https://blog.csdn.net/sparkliang/article/details/8567602)
 
 
 
