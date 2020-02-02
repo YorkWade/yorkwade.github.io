@@ -178,7 +178,7 @@ leveldb中主要涉及4个数据结构，是依次递进的关系，分别是：
     };
 ```
 ### HandleTable
-。作者自己实现Hashmap，采用拉链法实现，也就是在冲突发生时，需要使用链表来解决冲突问题。工业级的hash表需要考虑扩容。hash函数使用取模方法，但是取模的实现上，比较反人类，linux的无锁队列中，也有类似实现，这可能就是大牛的不同之处吧。
+作者自己实现Hashmap，采用拉链法实现，也就是在冲突发生时，需要使用链表来解决冲突问题。工业级的hash表需要考虑扩容。hash函数使用取模方法，但是取模的实现上，比较反人类，linux的无锁队列中，也有类似实现，这可能就是大牛的不同之处吧。
 
 
 
@@ -186,9 +186,7 @@ leveldb中主要涉及4个数据结构，是依次递进的关系，分别是：
 
 ### 参考：
 
-- [从一道网易面试题浅谈OC线程安全](https://www.jianshu.com/p/cec2a41aa0e7)
+- [leveldb中的LRUCache设计](https://bean-li.github.io/leveldb-LRUCache/)
 
-- [深入理解Tagged Pointer](http://www.infoq.com/cn/articles/deep-understanding-of-tagged-pointer)
 
-- [【译】采用Tagged Pointer的字符串](http://www.cocoachina.com/ios/20150918/13449.html)
 
