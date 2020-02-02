@@ -198,7 +198,7 @@ class HandleTable {
 
 ```objc
 LRUHandle* Insert(LRUHandle* h) {
-    LRUHandle** ptr = FindPointer(h->key(), h->hash);
+    LRUHandle** ptr = FindPointer(h->key(), h->hash);//在hash表中查找key
     LRUHandle* old = *ptr;      //老的元素返回，LRUCache会将相同key的老元素释放，详情看LRUCache的Insert函数。
     h->next_hash = (old == NULL ? NULL : old->next_hash);
     *ptr = h;
@@ -214,6 +214,19 @@ LRUHandle* Insert(LRUHandle* h) {
   }
 ```
 
+```objc
+  // Return a pointer to slot that points to a cache entry that
+  // matches key/hash.  If there is no such cache entry, return a
+  // pointer to the trailing slot in the corresponding linked list.
+  LRUHandle** FindPointer(const Slice& key, uint32_t hash) {
+    LRUHandle** ptr = &list_[hash & (length_ - 1)];//hash & (length_ - 1)变态等于hash%length
+    while (*ptr != NULL &&
+           ((*ptr)->hash != hash || key != (*ptr)->key())) {//如果多个链表值，遍历链表查找
+      ptr = &(*ptr)->next_hash;
+    }
+    return ptr;
+  }
+```
 
 
 
