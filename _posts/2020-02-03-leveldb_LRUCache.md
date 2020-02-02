@@ -219,15 +219,74 @@ LRUHandle* Insert(LRUHandle* h) {
   // matches key/hash.  If there is no such cache entry, return a
   // pointer to the trailing slot in the corresponding linked list.
   LRUHandle** FindPointer(const Slice& key, uint32_t hash) {
-    LRUHandle** ptr = &list_[hash & (length_ - 1)];//hash & (length_ - 1)变态等于hash%length
+    LRUHandle** ptr = &list_[hash & (length_ - 1)];             //变态，hash & (length_ - 1)等于hash%length
     while (*ptr != NULL &&
-           ((*ptr)->hash != hash || key != (*ptr)->key())) {//如果多个链表值，遍历链表查找
+           ((*ptr)->hash != hash || key != (*ptr)->key())) {    //如果多个链表值，遍历链表查找
       ptr = &(*ptr)->next_hash;
     }
     return ptr;
   }
 ```
+### LRUCache
+有了链表和哈希表，就要看LRUCache如何实现“近期最少使用”功能了。
 
+```objc
+// A single shard of sharded cache.
+class LRUCache {
+    ...
+  // Initialized before use.
+  size_t capacity_;
+
+  // mutex_ protects the following state.
+  port::Mutex mutex_;
+  size_t usage_;            //LRU链表已用长度，就是用来计算删除和替换LRU队列的。
+
+  // Dummy head of LRU list.
+  // lru.prev is newest entry, lru.next is oldest entry.
+  LRUHandle lru_;           //双向链表
+
+  HandleTable table_;       //哈希表
+  
+  ...
+};
+```
+
+```objc
+// A single shard of sharded cache.
+
+Cache::Handle* LRUCache::Insert(
+    const Slice& key, uint32_t hash, void* value, size_t charge,
+    void (*deleter)(const Slice& key, void* value)) {
+  MutexLock l(&mutex_);
+
+  LRUHandle* e = reinterpret_cast<LRUHandle*>(
+      malloc(sizeof(LRUHandle)-1 + key.size()));
+  e->value = value;
+  e->deleter = deleter;
+  e->charge = charge;
+  e->key_length = key.size();
+  e->hash = hash;
+  e->refs = 2;  // One from LRUCache, one for the returned handle
+  memcpy(e->key_data, key.data(), key.size());
+  LRU_Append(e);            //将最新值放入LRU队列最前端
+  usage_ += charge;         //已用数值增加
+
+  LRUHandle* old = table_.Insert(e);
+  if (old != NULL) {        //如果哈希表中存在已有值。
+    LRU_Remove(old);        //将LRU队列中已存在的值删除
+    Unref(old);
+  }
+
+  while (usage_ > capacity_ && lru_.next != &lru_) {    //如果已用数值大于队列容量
+    LRUHandle* old = lru_.next;                         
+    LRU_Remove(old);                                    //删除最旧值
+    table_.Remove(old->key(), old->hash);               //哈希表中相应删除
+    Unref(old);
+  }
+
+  return reinterpret_cast<Cache::Handle*>(e);
+}
+```
 
 
 ### 参考：
