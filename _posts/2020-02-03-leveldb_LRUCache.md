@@ -152,7 +152,31 @@ leveldb中主要涉及4个数据结构，是依次递进的关系，分别是：
 看到leveldb的这几个类名，我有一种骂娘的感觉，LRUHandle应该为LRUNode，HandleTable应该命名为HanshTable。也许没真正理解作者的逼格。
 
 ### LRUHandle
+```objc
+    struct LRUHandle {
+      void* value;
+      void (*deleter)(const Slice&, void* value);
+      LRUHandle* next_hash;
+      LRUHandle* next;
+      LRUHandle* prev;
+      size_t charge;      // TODO(opt): Only allow uint32_t?
+      size_t key_length;
+      bool in_cache;      // Whether entry is in the cache.
+      uint32_t refs;      // References, including cache reference, if present.
+      uint32_t hash;      // Hash of key(); used for fast sharding and comparisons
+      char key_data[1];   // Beginning of key
 
+      Slice key() const {
+        // For cheaper lookups, we allow a temporary Handle object
+        // to store a pointer to a key in "value".
+        if (next == this) {
+          return *(reinterpret_cast<Slice*>(value));
+        } else {
+          return Slice(key_data, key_length);
+        }
+      }
+    };
+```
 ### HandleTable
 。作者自己实现Hashmap，采用拉链法实现，也就是在冲突发生时，需要使用链表来解决冲突问题。工业级的hash表需要考虑扩容。hash函数使用取模方法，但是取模的实现上，比较反人类，linux的无锁队列中，也有类似实现，这可能就是大牛的不同之处吧。
 
