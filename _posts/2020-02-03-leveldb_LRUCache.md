@@ -15,9 +15,8 @@ tags:
 
 LRU(Least Recently Used) Cache是一种缓存替换算法，如果超过容量则应该把LRU(近期最少使用)的节点删除掉。实现时，需要利用hash表的快速访问的特性，又要有按时间排序经常增删节点（不易使用连续内存的数组）的双链表。
 
-## 正文
+## 一个C++实现
 
-一个c++实现。
 
 ```objc
     /*************************************************************************
@@ -142,9 +141,15 @@ LRU(Least Recently Used) Cache是一种缓存替换算法，如果超过容量�
     #endif
 ```
 
-答案是：会 crash。
+### leveldb 中的LRUCache
 
-我们来看看对`target`属性（`strong`修饰）进行赋值，相当与 MRC 中的
+leveldb中主要涉及4个数据结构，是依次递进的关系，分别是：
+
+    LRUHandle        //链表
+    HandleTable      //哈希表
+    LRUCache         //LRU缓存
+    ShardedLRUCache  //LRU缓存分组
+
 
 ```
 - (void)setTarget:(NSString *)target {
