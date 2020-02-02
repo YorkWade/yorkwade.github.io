@@ -199,15 +199,15 @@ class HandleTable {
 ```objc
 LRUHandle* Insert(LRUHandle* h) {
     LRUHandle** ptr = FindPointer(h->key(), h->hash);
-    LRUHandle* old = *ptr;  //老的元素返回，LRUCache会将相同key的老元素释放，详情看LRUCache的Insert函数。
+    LRUHandle* old = *ptr;      //老的元素返回，LRUCache会将相同key的老元素释放，详情看LRUCache的Insert函数。
     h->next_hash = (old == NULL ? NULL : old->next_hash);
     *ptr = h;
-    if (old == NULL) {
+    if (old == NULL) {          //如果hash表中没有该值
       ++elems_;
       if (elems_ > length_) {
         // Since each cache entry is fairly large, we aim for a small
         // average linked list length (<= 1).
-        Resize();//扩容
+        Resize();               //扩容
       }
     }
     return old;
