@@ -182,7 +182,7 @@ leveldb中主要涉及4个数据结构，是依次递进的关系，分别是：
 作者自己实现Hashmap，采用拉链法实现，也就是在冲突发生时，需要使用链表来解决冲突问题。工业级的hash表需要考虑扩容。hash函数使用取模方法，但是取模的实现上，比较反人类，linux的无锁队列中，也有类似实现，这可能就是大牛的不同之处吧。
 
 ```objc
-   class HandleTable {
+class HandleTable {
      public:
 
      ...
@@ -192,6 +192,26 @@ leveldb中主要涉及4个数据结构，是依次递进的关系，分别是：
       uint32_t length_;             //纪录的就是当前hash桶的个数
       uint32_t elems_;              //整个hash表中一共存放了多少个元素
       LRUHandle** list_;            //二维指针，每一个指针指向一个桶的表头位置
+     ...
+    };
+```
+
+```objc
+LRUHandle* Insert(LRUHandle* h) {
+    LRUHandle** ptr = FindPointer(h->key(), h->hash);
+    LRUHandle* old = *ptr;  //老的元素返回，LRUCache会将相同key的老元素释放，详情看LRUCache的Insert函数。
+    h->next_hash = (old == NULL ? NULL : old->next_hash);
+    *ptr = h;
+    if (old == NULL) {
+      ++elems_;
+      if (elems_ > length_) {
+        // Since each cache entry is fairly large, we aim for a small
+        // average linked list length (<= 1).
+        Resize();//扩容
+      }
+    }
+    return old;
+  }
 ```
 
 
