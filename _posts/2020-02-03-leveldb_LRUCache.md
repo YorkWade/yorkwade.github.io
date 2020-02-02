@@ -149,6 +149,7 @@ leveldb中主要涉及4个数据结构，是依次递进的关系，分别是：
 - HandleTable      //哈希表
 - LRUCache         //LRU缓存
 - ShardedLRUCache  //LRU缓存分组
+
 看到leveldb的这几个类名，我有一种骂娘的感觉，LRUHandle应该为LRUNode，HandleTable应该命名为HanshTable。也许没真正理解作者的逼格。
 
 ### LRUHandle
@@ -180,6 +181,18 @@ leveldb中主要涉及4个数据结构，是依次递进的关系，分别是：
 ### HandleTable
 作者自己实现Hashmap，采用拉链法实现，也就是在冲突发生时，需要使用链表来解决冲突问题。工业级的hash表需要考虑扩容。hash函数使用取模方法，但是取模的实现上，比较反人类，linux的无锁队列中，也有类似实现，这可能就是大牛的不同之处吧。
 
+```objc
+   class HandleTable {
+     public:
+
+     ...
+
+     private:
+
+      uint32_t length_;             //纪录的就是当前hash桶的个数
+      uint32_t elems_;              //整个hash表中一共存放了多少个元素
+      LRUHandle** list_;            //二维指针，每一个指针指向一个桶的表头位置
+```
 
 
 
