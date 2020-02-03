@@ -34,13 +34,11 @@ bloom filter 使用多个hash函数映射到“位数组”中，因此空间利
 2、在哈希函数的个数取到最优时，要让错误率不超过є，m至少需要取到最小值的1.44倍
 
 具体理论证明，一堆公式，不想多说，可参考
-- [维基百科](https://en.wikipedia.org/wiki/Bloom_filter)
+- [wiki bloom filter](https://en.wikipedia.org/wiki/Bloom_filter)
 - [https://blog.csdn.net/jiaomeng/article/details/1495500](https://blog.csdn.net/jiaomeng/article/details/1495500)
-- [double hash](https://en.wikipedia.org/wiki/Double_hashing)
-https://blog.csdn.net/jiaomeng/article/details/1495500
-https://en.wikipedia.org/wiki/Double_hashing
+- [wiki double hash](https://en.wikipedia.org/wiki/Double_hashing)
 
-![](https://en.wikipedia.org/wiki/File:Bloom_filter.svg)
+![](https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/Bloom_filter.svg/360px-Bloom_filter.svg.png)
 
 
 
