@@ -15,6 +15,8 @@ tags:
 
 LRU(Least Recently Used) Cache是一种缓存替换算法，如果超过容量则应该把LRU(近期最少使用)的节点删除掉。实现时，需要利用hash表的快速访问的特性，又要有按时间排序经常增删节点（不易使用连续内存的数组）的双链表。
 
+![](https://cloud.githubusercontent.com/assets/1736354/6984935/92033a96-da60-11e4-8754-66135bb0d233.png)
+
 ## 一个C++实现
 
 
