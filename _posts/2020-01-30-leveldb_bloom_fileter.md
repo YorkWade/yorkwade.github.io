@@ -11,12 +11,35 @@ tags:
 ---
 
 
-
 ![Marcus'Buchecha'Almeida - 现任IBJJF绝对冠军。这家伙很坚强，相信我！图片由BJJ Pix的William Burkhardt提供  。](http://mjrnxewya3t1in23ybpwjw59.wpengine.netdna-cdn.com/wp-content/uploads/buchecha-marcus-almeida-roger-gracie.jpg)
 
 ### 理论简述
 
-布隆过滤器（bloom filter）
+布隆过滤器（bloom filter）是通过多个hash算法来共同判断某个元素是否在某个集合内，利用多个随机数的小概率，来实现的一种高效的数据结构。当我们在 bloom filter 查找 key 时，有返回两种情况：
+   1、 key 不存在，那么 key 一定不存在。
+   2、 key 存在，那么 key 可能存在。
+也就是说 bloom filter 具有一定的误判率，但是空间利用率更高，牺牲一点小概率也是可以接受的。
+
+### 数学结论
+bloom filter 使用多个hash函数映射到“位数组”中，因此空间利用率很高。
+如何选择位数组长度？
+选择多少个hash函数？
+多个hash函数，可咋整？
+过滤器中存储多少个key？
+
+
+数学结论有：
+当k(hash 函数个数)，m(bit数组大小)，n(插入元素个数)满足下式的时候，可以保证最低的误差率
+1、为了获得最优的准确率，当k = ln2 * (m/n)时，布隆过滤器获得最优的准确性；
+2、在哈希函数的个数取到最优时，要让错误率不超过є，m至少需要取到最小值的1.44倍
+
+具体理论证明，一堆公式，不想多说，可参考
+https://en.wikipedia.org/wiki/Bloom_filter
+https://blog.csdn.net/jiaomeng/article/details/1495500
+https://en.wikipedia.org/wiki/Double_hashing
+
+![](https://en.wikipedia.org/wiki/File:Bloom_filter.svg)
+
 
 
 ### leveldb中的实现
