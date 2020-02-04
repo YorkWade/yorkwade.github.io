@@ -15,7 +15,7 @@ tags:
 
 ### 理论简述
 
-布隆过滤器（bloom filter）是通过多个hash算法来共同判断某个元素是否在某个集合内，利用多个随机数的小概率，来实现的一种高效的数据结构。当我们在 bloom filter 查找 key 时，有返回两种情况：
+布隆过滤器（bloom filter）是通过多个hash算法来共同判断某个元素是否在某个集合内，利用多个随机数重复的小概率，来实现的一种高效的数据结构。当我们在 bloom filter 查找 key 时，有返回两种情况：
 - key 不存在，那么 key 一定不存在
 - key 存在，那么 key 可能存在
 
@@ -65,13 +65,14 @@ public:
     virtual void CreateFilter(const Slice* keys, int n, std::string* dst) const {
         size_t bits = n * bits_per_key_; // 位数组的大小
         if (bits < 64) bits = 64; // 通过限制最小的位数组大小，降低错误率
-
+        
+        // 对齐,方便内存读写以及后续位置索引
         size_t bytes = (bits + 7) / 8; // 计算需要分配的空间
         bits = bytes * 8;
 
         const size_t init_size = dst->size();
         dst->resize(init_size + bytes, 0);
-        dst->push_back(static_cast<char>(k_)); // 将哈希函数个数存放到数组开头
+        dst->push_back(static_cast<char>(k_)); // // 最后一个byte存储使用的hash 函数的个数
         char* array = &(*dst)[init_size];
         for (int i = 0; i < n; i++) {
             // 使用double-hashing模拟多个哈希函数
@@ -81,6 +82,7 @@ public:
             uint32_t h = BloomHash(keys[i]);
             const uint32_t delta = (h >> 17) | (h << 15);
             for (size_t j = 0; j < k_; j++) {
+                // 在整个bit 数组的位置
                 const uint32_t bitpos = h % bits;
                 // array数组上的每个char有8个位
                 // 将array上相应的位设置为1
