@@ -74,7 +74,7 @@ class Arena {
 };
 ```
 
-![](https://cloud.githubusercontent.com/assets/1736354/6984935/92033a96-da60-11e4-8754-66135bb0d233.png)
+![](https://i.imgur.com/ZB75F7t.png)
 
 
 ### 申请新快
