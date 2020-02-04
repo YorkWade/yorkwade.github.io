@@ -76,18 +76,24 @@ class Arena {
 
 ![](https://i.imgur.com/ZB75F7t.png)
 
-
-### 申请新快
+### 分配内存
 ```objc
 char* Arena::AllocateNewBlock(size_t block_bytes) {
   char* result = new char[block_bytes];
   blocks_.push_back(result);
-  memory_usage_.NoBarrier_Store(
+  memory_usage_.NoBarrier_Store(//内存屏障
       reinterpret_cast<void*>(MemoryUsage() + block_bytes + sizeof(char*)));
   return result;
 }
 
 ```
+
+
+X86 CPU的赋值(Store)和读取(Load)操作天然可以做到无锁。那memory barrier这个名词是哪里蹦出来的呢? Load是原子性操作, CPU不会Load流程走到一半, 就切换到另一个线程去了, 也就是Load本身是不会在多线程环境下产生问题的. 真正导致问题的是做这个操作的时机不确定!
+- 1. 编译器有可能让指令乱序, 比如, int a=b; long c=b; 编译器一旦判定a和c没有依赖性, 就有权力让这两个取值操作以任意顺序执行. 因为有可能有CPU指令可以一下取4个int, 乱序可以凑个整.
+- 2. CPU会让指令乱序, 原因同上, 但额外还有个原因是分支预测. AB线程都读写一个中间量c, B在处理c, 你预期B好了, A才会取. 但万一A分支预测成功, B在处理的时候, A已经提前Load c进寄存器, 这就没得玩了...
+所以, 必须要有指令告诉CPU和编译器, 不要改变这个变量的存取顺序. 这就是Memory Barrier了. call MemoryBarrier保证前后一行是严格按照代码顺序的. 
+
 
 ```objc
 char* Arena::AllocateFallback(size_t bytes) {
