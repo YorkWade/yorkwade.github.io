@@ -1,9 +1,9 @@
 ---
 layout:     post   				    # 使用的布局（不需要改）
-title:      My First Post 				# leveldb之Arena 
-subtitle:   Hello World, Hello Blog #内存分配器
+title:      leveldb之Arena 		   #  标题
+subtitle:   内存分配器               #
 date:       2020-02-04 				# 时间
-author:     BY 						# 作者
+author:     yorkwade				# 作者
 header-img: img/post-bg-2015.jpg 	#这篇文章标题背景图片
 catalog: true 						# 是否归档
 tags:								#标签
