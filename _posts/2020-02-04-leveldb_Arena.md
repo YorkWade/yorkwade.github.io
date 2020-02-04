@@ -14,17 +14,17 @@ tags:								#标签
 
 LevelDB里面为了防止出现内存分配的碎片，采用了自己写的一套内存分配管理器，名称为Arena。他不是我们整个leveldb统一使用的传统意义上的内存分配器，主要是为skiplist也就是memtable服务。skiplist里面记录的是用户传进来的key/value，这些字符串有长有短，放到内存中的时候，很容易导致内存碎片。所以这里写了一个统一的内存管理器，其内部还是调用new。skiplist/memtable要申请内存的时候，就利用Arena分配器来分配内存。当skiplist/memtable要释放的时候，就直接通过Arena类的block_把所有申请的内存释放掉。
 
-![](https://cloud.githubusercontent.com/assets/1736354/6984935/92033a96-da60-11e4-8754-66135bb0d233.png)
+
 
 
 ### 需求分析
 
 leveldb中主要涉及4个数据结构，是依次递进的关系，分别是：
 
-- LRUHandle        //链表
-- HandleTable      //哈希表
-- LRUCache         //LRU缓存
-- ShardedLRUCache  //LRU缓存分组
+- 如何管理内存块
+- 何时申请更大的内存
+- 如何字节对齐
+- 如何释放内存
 
 ## 接口和属性
 
@@ -73,6 +73,8 @@ class Arena {
   void operator=(const Arena&);
 };
 ```
+
+![](https://cloud.githubusercontent.com/assets/1736354/6984935/92033a96-da60-11e4-8754-66135bb0d233.png)
 
 
 ### 申请新快
