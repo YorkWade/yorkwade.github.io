@@ -333,6 +333,7 @@ void LRUCache::Erase(const Slice& key, uint32_t hash) {
 ShardedLRUCache类，实际上到S3，一个标准的LRU Cache已经实现了，为何还要更近一步呢？答案就是速度！
 为了多线程访问，尽可能快速，减少锁开销，ShardedLRUCache内部有16个LRUCache，查找Key时首先计算key属于哪一个分片，分片的计算方法是取32位hash值的高4位，然后在相应的LRUCache中进行查找，这样就大大减少了多线程的访问锁的开销。它就是一个包装类，实现都在LRUCache类中。
 
+![](https://i.imgur.com/Gtnn06N.jpg)
 
 ```objc
 static const int kNumShardBits = 4;
