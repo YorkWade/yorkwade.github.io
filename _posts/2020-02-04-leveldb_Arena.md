@@ -91,12 +91,20 @@ char* Arena::AllocateNewBlock(size_t block_bytes) {
 
 ```objc
 char* Arena::AllocateFallback(size_t bytes) {
-  if (bytes > kBlockSize / 4) {
+  if (bytes > kBlockSize / 4) { //如果size不大于kBlockSize的四分之一，就在当前空闲的内存block 中分配，否则，直接向系统申请
     // Object is more than a quarter of our block size.  Allocate it separately
     // to avoid wasting too much space in leftover bytes.
     char* result = AllocateNewBlock(bytes);
     return result;
   }
+  // We waste the remaining space in the current block.
+  alloc_ptr_ = AllocateNewBlock(kBlockSize);
+  alloc_bytes_remaining_ = kBlockSize;
+
+  char* result = alloc_ptr_;
+  alloc_ptr_ += bytes;
+  alloc_bytes_remaining_ -= bytes;
+  return result;
 ```
 
 
@@ -112,11 +120,11 @@ char* Arena::AllocateNewBlock(size_t block_bytes) {
 
 ```objc
 char* Arena::AllocateAligned(size_t bytes) {
-  const int align = (sizeof(void*) > 8) ? sizeof(void*) : 8;
+  const int align = (sizeof(void*) > 8) ? sizeof(void*) : 8;//在32位系统下是4 ,64位系统下是8 
   assert((align & (align-1)) == 0);   // Pointer size should be a power of 2
-  size_t current_mod = reinterpret_cast<uintptr_t>(alloc_ptr_) & (align-1);
-  size_t slop = (current_mod == 0 ? 0 : align - current_mod);
-  size_t needed = bytes + slop;
+  size_t current_mod = reinterpret_cast<uintptr_t>(alloc_ptr_) & (align-1);//当前指针模4的值,这种取模方法属于牛人技巧
+  size_t slop = (current_mod == 0 ? 0 : align - current_mod);//还差 slop = align - current_mod多个字节，内存才是对其
+  size_t needed = bytes + slop;//内存对齐
   char* result;
   if (needed <= alloc_bytes_remaining_) {
     result = alloc_ptr_ + slop;
@@ -136,3 +144,4 @@ char* Arena::AllocateAligned(size_t bytes) {
 ### 参考：
 
 - [LevelDB源码解析27. Arena内存分配器](https://zhuanlan.zhihu.com/p/45843295)
+- [LevelDB源码剖析之Arena内存管理](http://mingxinglai.com/cn/2013/01/leveldb-arena/)
