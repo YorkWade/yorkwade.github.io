@@ -47,10 +47,10 @@ SkipList实现简单。
 
 ### 实现要点
 
-- 以怎样的概率分层
+- 以怎样的概率分层（Choosing a Random Level）
 
 William Pugh的论文中描述：
-Choosing a Random LevelInitially, we discussed a probability distribution where half ofthe nodes that have level i pointers also have level i+1 point-ers. To get away from magic constants, we say that a fractionp of the nodes with level i pointers also have level i+1 point-ers. (for our original discussion, p = 1/2). Levels are generatedrandomly by an algorithm equivalent to the one in Figure 5.Levels are generated without reference to the number of ele-ments in the list.
+Initially, we discussed a probability distribution where half ofthe nodes that have level i pointers also have level i+1 point-ers. To get away from magic constants, we say that a fractionp of the nodes with level i pointers also have level i+1 point-ers. (for our original discussion, p = 1/2). Levels are generatedrandomly by an algorithm equivalent to the one in Figure 5.Levels are generated without reference to the number of ele-ments in the list.
 
 ```objc
 randomLevel()
@@ -61,6 +61,12 @@ randomLevel()
     return lvl
 ```
 
+- 最大分几层（Determining MaxLevelSince）
+
+ 
+we can safely cap levels at L(n), we should chooseMaxLevel = L(N) (where N is an upper bound on the numberof elements in a skip list). If p = 1/2, using MaxLevel = 16 isappropriate for data structures containing up to 216 elements
+
+ 这使得上层节点的数量约为下层的1/4。那么，当设定MaxHeight=12时，根节点为1时，约可均匀容纳Key的数量为4^11= 4194304(约为400W)。MaxHeight=12为经验值，在百万数据规模时，尤为适用。
 
 ## 源码分析
 
