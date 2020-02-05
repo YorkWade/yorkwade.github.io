@@ -37,9 +37,9 @@ SkipList实现简单。
 
 ![](http://igoro.com/wordpress/wp-content/uploads/2008/07/multilist.png)
 
-那么查找7的过程是这样的（红色箭头）：
+wiki上查找并插入某一直的过程如下：
 
-![](http://igoro.com/wordpress/wp-content/uploads/2008/07/multilist-search.png)
+![](https://en.wikipedia.org/wiki/File:Skip_list_add_element-en.gif)
 
 
 
