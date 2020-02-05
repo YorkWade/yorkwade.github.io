@@ -7,7 +7,7 @@ author:     BY
 header-img: img/post-bg-BJJ.jpg
 catalog: true
 tags:
-    - BJJ
+    - leveldb
 ---
 
 
@@ -17,7 +17,7 @@ tags:
 
 SkipList称之为跳表，可实现O(lgN)级别的插入、删除。和Map、set等典型的红黑树数据结构相比，且实现简单，其问题在于性能与插入数据的随机性有关。
 
-由William Pugh于1990年在在 Communications of the ACM June 1990, 33(6) 668-676 发表了[Skip lists: a probabilistic alternative to balanced trees]（https://www.cl.cam.ac.uk/teaching/0506/Algorithms/skiplists.pdf）。
+由William Pugh于1990年在在 Communications of the ACM June 1990, 33(6) 668-676 发表了[Skip lists: a probabilistic alternative to balanced trees]（https://www.cl.cam.ac.uk/teaching/0506/Algorithms/skiplists.pdf）)
 
 
 
@@ -27,6 +27,8 @@ SkipList称之为跳表，可实现O(lgN)级别的插入、删除。和Map、set
 
 但是红黑树有一个问题就是在并发环境下使用不方便，比如需要更新数据时，Skip需要更新的部分比较少，锁的东西也更少，而红黑树有个平衡的过程，在这个过程中会涉及到较多的节点，需要锁住更多的节点，从而降低了并发性能。
 SkipList实现简单。
+
+
 
 ### 实现要点
 
