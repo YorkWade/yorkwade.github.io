@@ -28,6 +28,14 @@ SkipList称之为跳表，可实现O(lgN)级别的插入、删除。和Map、set
 但是红黑树有一个问题就是在并发环境下使用不方便，比如需要更新数据时，Skip需要更新的部分比较少，锁的东西也更少，而红黑树有个平衡的过程，在这个过程中会涉及到较多的节点，需要锁住更多的节点，从而降低了并发性能。
 SkipList实现简单。
 
+单链表
+![](http://igoro.com/wordpress/wp-content/uploads/2008/07/list.png)
+在单向链表中进行查找的时间复杂度是O(N)。此外，由于插入、删除操作首先都要使用查找操作，因此如何提高查找的性能成为关键问题。
+一种改善查找性能的方法，建立多级链表
+![](http://igoro.com/wordpress/wp-content/uploads/2008/07/multilist.png)
+那么查找7的过程是这样的（红色箭头）：
+![](http://igoro.com/wordpress/wp-content/uploads/2008/07/multilist-search.png)
+
 
 
 ### 实现要点
