@@ -75,4 +75,4 @@ we can safely cap levels at L(n), we should chooseMaxLevel = L(N) (where N is an
 
 
 - [LevelDB : SkipList](https://huntinux.github.io/leveldb-skiplist.html)
-- [LevelDB源码剖析之Arena内存管理](http://mingxinglai.com/cn/2013/01/leveldb-arena/)
+- [Skip Lists](https://www.csee.umbc.edu/courses/341/fall01/Lectures/SkipLists/skip_lists/skip_lists.html)
