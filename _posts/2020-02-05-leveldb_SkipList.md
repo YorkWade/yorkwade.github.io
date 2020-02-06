@@ -196,7 +196,7 @@ SkipList<Key,Comparator>::NewNode(const Key& key, int height) {
 }
 ```
 
-
+插入操作
 ```objc
 template<typename Key, class Comparator>
 void SkipList<Key,Comparator>::Insert(const Key& key) {
@@ -222,6 +222,9 @@ void SkipList<Key,Comparator>::Insert(const Key& key) {
     // the loop below.  In the former case the reader will
     // immediately drop to the next level since NULL sorts after all
     // keys.  In the latter case the reader will use the new node.
+    // max_height_没有任何并发保护
+    // 读线程在读到新的max_height_同时，对应的层级指针(new level pointer from head_)可能是原有的NULL，
+    // 也有可能是部分更新的层级指针。如果是前者将直接跳到下一level继续查找，如果是后者，新插入的节点将被启用。
     max_height_.NoBarrier_Store(reinterpret_cast<void*>(height)); // 更新当前高度max_height_
   }
 
@@ -293,3 +296,5 @@ bool SkipList<Key,Comparator>::Contains(const Key& key) const {
 
 - [LevelDB : SkipList](https://huntinux.github.io/leveldb-skiplist.html)
 - [Skip Lists](https://www.csee.umbc.edu/courses/341/fall01/Lectures/SkipLists/skip_lists/skip_lists.html)
+- [LevelDB源码剖析之基础部件-SkipList](https://www.jianshu.com/p/6624befde844)
+
