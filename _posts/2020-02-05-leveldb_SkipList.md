@@ -25,7 +25,7 @@ SkipList称之为跳表，可实现O(lgN)级别的插入、删除。和Map、set
 
 由William Pugh于1990年在在 Communications of the ACM June 1990, 33(6) 668-676 发表了[Skip lists: a probabilistic alternative to balanced trees](https://www.cl.cam.ac.uk/teaching/0506/Algorithms/skiplists.pdf)） 
 
-我们都知道，AVL树有着严格的O(logN)的查询效率，但是由于插入过程中可能需要多次旋转，导致插入效率较低，因而才有了在工程界更加实用的红黑树。但是红黑树有一个问题就是在并发环境下使用不方便，比如需要更新数据时，Skip需要更新的部分比较少，锁的东西也更少，而红黑树有个平衡的过程，在这个过程中会涉及到较多的节点，需要锁住更多的节点，从而降低了并发性能。
+我们都知道，AVL树有着严格的O(logN)的查询效率，但是由于插入过程中可能需要多次旋转，导致插入效率较低，因而才有了在工程界更加实用的红黑树。但是红黑树有一个问题就是在并发环境下使用不方便，比如需要更新数据时，Skip需要更新的部分比较少，锁的东西也更少，而红黑树有个平衡的过程，在这个过程中会涉及到较多的节点，需要锁住更多的节点，从而降低了并发性能。SkipList空间使用率也不错，与平衡树有着相同的复杂度，节省空间，每个检点平均1.33个指针。
 
 SkipList比较突出的优点就是实现简单。
 
@@ -48,11 +48,11 @@ SkipList比较突出的优点就是实现简单。
 
 ### 实现要点
 
-- 以怎样的概率分层（Choosing a Random Level）
+- 跳表的关键参数
 
+分层算法决定了数据插入的Level，SkipList的平衡性如何全权由分层算法决定。极端情况下，假设SkipList只有Level-0层，SkipList将弱化成自排序List。此时查找、插入、删除的时间复杂度均为O(n)，而非O(Log(n))。
+分层概率和最大层数，为为SkipList的关键参数，与性能直接相关。
 William Pugh的论文中描述：
-Initially, we discussed a probability distribution where half ofthe nodes that have level i pointers also have level i+1 point-ers. To get away from magic constants, we say that a fractionp of the nodes with level i pointers also have level i+1 point-ers. (for our original discussion, p = 1/2). Levels are generatedrandomly by an algorithm equivalent to the one in Figure 5.Levels are generated without reference to the number of ele-ments in the list.
-
 ```objc
 randomLevel()
     lvl := 1
@@ -62,13 +62,11 @@ randomLevel()
     return lvl
 ```
 
-- 最大分几层（Determining MaxLevelSince）
+这使得上层节点的数量约为下层的1/4。那么，当设定MaxHeight=12时，根节点为1时，约可均匀容纳Key的数量为4^11= 4194304(约为400W)。MaxHeight=12为经验值，在百万数据规模时，尤为适用。 程序中修改MaxHeight时，在数值变小时，性能上有明显下降，但当数值增大时，甚至增大到10000时，和默认的 MaxHeight= 12相比仍旧无明显差异，内存使用上也是如此
 
-MaxHeight 为SkipList的关键参数，与性能直接相关。
- 
-we can safely cap levels at L(n), we should chooseMaxLevel = L(N) (where N is an upper bound on the numberof elements in a skip list). If p = 1/2, using MaxLevel = 16 isappropriate for data structures containing up to 216 elements
+- 无锁插入查找
 
- 这使得上层节点的数量约为下层的1/4。那么，当设定MaxHeight=12时，根节点为1时，约可均匀容纳Key的数量为4^11= 4194304(约为400W)。MaxHeight=12为经验值，在百万数据规模时，尤为适用。 程序中修改MaxHeight时，在数值变小时，性能上有明显下降，但当数值增大时，甚至增大到10000时，和默认的 MaxHeight= 12相比仍旧无明显差异，内存使用上也是如此。
+
 
 ## 源码分析
 
