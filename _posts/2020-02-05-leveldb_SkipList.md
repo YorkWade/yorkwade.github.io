@@ -144,7 +144,7 @@ class SkipList {
 };
 ```
 
-节点的定义
+节点的定义，封装了线程安全的原则操作：
 ```objc
 // Implementation details follow
 template<typename Key, class Comparator>
@@ -238,12 +238,13 @@ void SkipList<Key,Comparator>::Insert(const Key& key) {
 }
 ```
 随后节点插入方是将无锁并发变为现实：
--     首先更新插入节点的next指针，此处无并发问题。
--     修改插入位置前一节点的next指针，此处采用SetNext处理并发。
--     由最下层向上插入可以保证当前层一旦插入后，其下层已更新完毕并可用。
+    首先更新插入节点的next指针，此处无并发问题。
+    修改插入位置前一节点的next指针，此处采用SetNext处理并发。
+    由最下层向上插入可以保证当前层一旦插入后，其下层已更新完毕并可用。
 当然，多个写之间的并发SkipList时非线程安全的，在LevelDB的MemTable中采用了另外的技巧来处理写并发问题。
 
 
+随机生成高度
 ```objc
 template<typename Key, class Comparator>
 int SkipList<Key,Comparator>::RandomHeight() {
@@ -259,6 +260,24 @@ int SkipList<Key,Comparator>::RandomHeight() {
 }
 ```
 
+可对比看一下redis的实现，也使用了0.25（1/4）的概率：
+```objc
+#define ZSKIPLIST_MAXLEVEL 32 /* Should be enough for 2^32 elements */
+#define ZSKIPLIST_P 0.25      /* Skiplist P = 1/4 */
+/* Returns a random level for the new skiplist node we are going to create.
+ * The return value of this function is between 1 and ZSKIPLIST_MAXLEVEL
+ * (both inclusive), with a powerlaw-alike distribution where higher
+ * levels are less likely to be returned. */
+int zslRandomLevel(void) {
+    int level = 1;
+    while ((random()&0xFFFF) < (ZSKIPLIST_P * 0xFFFF))
+        level += 1;
+    return (level<ZSKIPLIST_MAXLEVEL) ? level : ZSKIPLIST_MAXLEVEL;
+}
+```
+
+
+接着看FindGreaterOrEqual的实现：
 ```objc
 // Return the earliest node that comes at or after key.
 // Return NULL if there is no such node.
