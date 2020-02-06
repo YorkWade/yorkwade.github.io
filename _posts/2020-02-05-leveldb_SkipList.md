@@ -72,7 +72,7 @@ we can safely cap levels at L(n), we should chooseMaxLevel = L(N) (where N is an
 
 ## 源码分析
 
-
+SkipList的定义如下：
 ```objc
 template<typename Key, class Comparator>
 class SkipList {
@@ -117,7 +117,7 @@ class SkipList {
   Random rnd_;
 
   Node* NewNode(const Key& key, int height);
-  int RandomHeight();
+  int RandomHeight();                   //随机生成高度
   bool Equal(const Key& a, const Key& b) const { return (compare_(a, b) == 0); }
 
   // Return true if key is greater than the data stored in "n"
@@ -144,6 +144,7 @@ class SkipList {
 };
 ```
 
+节点的定义
 ```objc
 // Implementation details follow
 template<typename Key, class Comparator>
@@ -182,6 +183,10 @@ struct SkipList<Key,Comparator>::Node {
   port::AtomicPointer next_[1]; // 数组的长度就是该节点的高度，next_[0]是最底层的链表
 };
 
+```
+
+NewNode是用Arena的内存池分配的。
+```objc
 template<typename Key, class Comparator>
 typename SkipList<Key,Comparator>::Node*
 SkipList<Key,Comparator>::NewNode(const Key& key, int height) {
