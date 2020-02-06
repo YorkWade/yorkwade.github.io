@@ -237,6 +237,14 @@ void SkipList<Key,Comparator>::Insert(const Key& key) {
   }
 }
 ```
+随后节点插入方是将无锁并发变为现实：
+
+-     首先更新插入节点的next指针，此处无并发问题。
+-     修改插入位置前一节点的next指针，此处采用SetNext处理并发。
+-     由最下层向上插入可以保证当前层一旦插入后，其下层已更新完毕并可用。
+
+当然，多个写之间的并发SkipList时非线程安全的，在LevelDB的MemTable中采用了另外的技巧来处理写并发问题。
+
 
 ```objc
 template<typename Key, class Comparator>
