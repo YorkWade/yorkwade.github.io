@@ -66,7 +66,7 @@ leveldb中SkipList的概率为1/4，这使得上层节点的数量约为下层�
 - 并发读写
 
 读值本身并不会改变SkipList的结构，因此多个读之间不存在并发问题。
-而当读、写同时存在时，SkipList通过AtomicPointer(原子指针)及结构调整上的小技巧达到“无锁”并发。首先，leveldb的MemTable只做插入不做删除（删除也是归档时处理），节点一旦被添加到SkipList中，其层级结构将不再发生变化，Node中的唯一成员：port::AtomicPointer next_[1] 大小不会再发生改变。
+而当读、写同时存在时，SkipList通过AtomicPointer(原子指针)及结构调整上的小技巧达到“无锁”并发。首先，leveldb的MemTable只做插入不做删除（这由其业务特性决定），节点一旦被添加到SkipList中，其层级结构将不再发生变化，Node中的唯一成员：port::AtomicPointer next_[1] 大小不会再发生改变。
 
 
 
