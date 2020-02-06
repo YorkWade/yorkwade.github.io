@@ -49,6 +49,8 @@ b = 2
 ```objc
 asm volatile(“” ::: “memory”);
 ```
+MemoryBarrier函数实现是inline且嵌入一条汇编指令__asm__ __volatile__(“” : : : “memory”);，__volatile__表示阻止编译器对该值进行优化，强制变量使用精确内存地址（非 cache或register），memory表示对内存有修改操作，需要重新读入，该指令能够阻止编译器乱序，但不能阻止CPU乱序执行（在SMP体系下）
+
 此时我们能保证b的赋值一定发生在a赋值之后。那么此时线程2的逻辑是对的吗？还不能保证。因为线程2可能会先读取a的旧值，然后再读取b的值。从编译器来看a和b之间没有关联，因此这样的优化是可能发生的。所以线程2也需要加上编译器级的屏障：
 ```objc
 if (b == 2) {
@@ -62,9 +64,8 @@ if (b == 2) {
 
 同样的，为了解决这样的问题，语言上有一些语句提供屏障的效果，保证屏障前后指令执行的顺序性。而且，庆幸的是，一般，能保证cpu内存屏障的语句也会自动保证编译器级的屏障。注意，不同的cpu的内存模型（即对内存中的指令的执行顺序如何进行的模型）是不一样的，很辛运的，x86/64是的内存模型是强内存模型，它对cpu的乱序执行的影响是最小的。
 
-```objc
 A strong hardware memory model is one in which every machine instruction comes implicitly withacquire and release semantics. As a result, when one CPU core performs a sequence of writes, every other CPU core sees those values change in the same order that they were written.
-```
+
 因此在x86/64上可以不用考虑cpu的内存屏障，只需要在必要的时候考虑编译器的乱序问题即可。
 
 CPU可以保证**指针**操作的原子性，但编译器、CPU指令优化--重排序(reorder)可能导致指令乱序，在多线程情况下程序运行结果不符合预期。关于重排序说明如下:
