@@ -17,7 +17,7 @@ AtomicPointer 是 leveldb 提供的一个原子指针操作类，使用了基于
 
 内存屏障是同步的一种方法，类似于锁和信号量，但是它有更高的效率。
 
-CPU可以保证指针操作的原子性，但编译器、CPU指令优化--重排序(reorder)可能导致指令乱序，在多线程情况下程序运行结果不符合预期。关于重排序说明如下:
+CPU可以保证**指针**操作的原子性，但编译器、CPU指令优化--重排序(reorder)可能导致指令乱序，在多线程情况下程序运行结果不符合预期。关于重排序说明如下:
 - 单核单线程时，重排序保证单核单线程下程序运行结果一致。
 - 单核多线程时，编译器reorder可能导致运行结果不一致。参见[《memory-ordering-at-compile-time》](https://preshing.com/20120625/memory-ordering-at-compile-time/)。
 - 多核多线程时，编译器reorder、CPU reorder将导致运行结果不一致。参见[《memory-reordering-caught-in-the-act》](https://www.jianshu.com/p/5b317882dda6)。
@@ -61,5 +61,6 @@ CPU可以保证指针操作的原子性，但编译器、CPU指令优化--重排
 
 >参考 
 
->- [《体能训练之金字塔》](https://preshing.com/20120625/memory-ordering-at-compile-time/)
->- [零基础健身者的运动发展流程](http://www.jianshenjiaolian.com.cn/lingjichu-fazhan.html)
+>- [《Memory Ordering at Compile Time》](https://preshing.com/20120625/memory-ordering-at-compile-time/)
+>- [LevelDB源码剖析之基础部件-AtomicPointer](https://www.jianshu.com/p/3161784e7573)
+>- [译】Memory Reordering Caught in the Act](https://www.jianshu.com/p/5b317882dda6)
