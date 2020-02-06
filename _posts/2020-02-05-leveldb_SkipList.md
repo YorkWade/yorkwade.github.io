@@ -112,8 +112,179 @@ class SkipList {
     return static_cast<int>(
         reinterpret_cast<intptr_t>(max_height_.NoBarrier_Load()));
   }
+
+  // Read/written only by Insert().
+  Random rnd_;
+
+  Node* NewNode(const Key& key, int height);
+  int RandomHeight();
+  bool Equal(const Key& a, const Key& b) const { return (compare_(a, b) == 0); }
+
+  // Return true if key is greater than the data stored in "n"
+  bool KeyIsAfterNode(const Key& key, Node* n) const;
+
+  // Return the earliest node that comes at or after key.
+  // Return NULL if there is no such node.
+  //
+  // If prev is non-NULL, fills prev[level] with pointer to previous
+  // node at "level" for every level in [0..max_height_-1].
+  Node* FindGreaterOrEqual(const Key& key, Node** prev) const;
+
+  // Return the latest node with a key < key.
+  // Return head_ if there is no such node.
+  Node* FindLessThan(const Key& key) const;
+
+  // Return the last node in the list.
+  // Return head_ if list is empty.
+  Node* FindLast() const;
+
+  // No copying allowed
+  SkipList(const SkipList&);
+  void operator=(const SkipList&);
+};
 ```
 
+```objc
+// Implementation details follow
+template<typename Key, class Comparator>
+struct SkipList<Key,Comparator>::Node {
+  explicit Node(const Key& k) : key(k) { }
+
+  Key const key; // 保存的key
+
+  // Accessors/mutators for links.  Wrapped in methods so we can
+  // add the appropriate barriers as necessary.
+  Node* Next(int n) {
+    assert(n >= 0);
+    // Use an 'acquire load' so that we observe a fully initialized
+    // version of the returned Node.
+    return reinterpret_cast<Node*>(next_[n].Acquire_Load());
+  }
+  void SetNext(int n, Node* x) {
+    assert(n >= 0);
+    // Use a 'release store' so that anybody who reads through this
+    // pointer observes a fully initialized version of the inserted node.
+    next_[n].Release_Store(x);
+  }
+
+  // No-barrier variants that can be safely used in a few locations.
+  Node* NoBarrier_Next(int n) {
+    assert(n >= 0);
+    return reinterpret_cast<Node*>(next_[n].NoBarrier_Load());
+  }
+  void NoBarrier_SetNext(int n, Node* x) {
+    assert(n >= 0);
+    next_[n].NoBarrier_Store(x);
+  }
+
+ private:
+  // Array of length equal to the node height.  next_[0] is lowest level link.
+  port::AtomicPointer next_[1]; // 数组的长度就是该节点的高度，next_[0]是最底层的链表
+};
+
+template<typename Key, class Comparator>
+typename SkipList<Key,Comparator>::Node*
+SkipList<Key,Comparator>::NewNode(const Key& key, int height) {
+  char* mem = arena_->AllocateAligned(
+      sizeof(Node) + sizeof(port::AtomicPointer) * (height - 1));
+  return new (mem) Node(key);
+}
+```
+
+
+```objc
+template<typename Key, class Comparator>
+void SkipList<Key,Comparator>::Insert(const Key& key) {
+  // TODO(opt): We can use a barrier-free variant of FindGreaterOrEqual()
+  // here since Insert() is externally synchronized.
+  Node* prev[kMaxHeight];
+  Node* x = FindGreaterOrEqual(key, prev); // 进行查找
+
+  // Our data structure does not allow duplicate insertion
+  assert(x == NULL || !Equal(key, x->key)); // 不允许插入重复数据
+
+  int height = RandomHeight();   // 生成随机的高度height
+  if (height > GetMaxHeight()) { // 如果height大于最大高度，将增加层次中的前驱设为head
+    for (int i = GetMaxHeight(); i < height; i++) {
+      prev[i] = head_;
+    }
+    //fprintf(stderr, "Change height from %d to %d\n", max_height_, height);
+
+    // It is ok to mutate max_height_ without any synchronization
+    // with concurrent readers.  A concurrent reader that observes
+    // the new value of max_height_ will see either the old value of
+    // new level pointers from head_ (NULL), or a new value set in
+    // the loop below.  In the former case the reader will
+    // immediately drop to the next level since NULL sorts after all
+    // keys.  In the latter case the reader will use the new node.
+    max_height_.NoBarrier_Store(reinterpret_cast<void*>(height)); // 更新当前高度max_height_
+  }
+
+  x = NewNode(key, height);          // 生成一个新节点
+  for (int i = 0; i < height; i++) { // 插入该节点
+    // NoBarrier_SetNext() suffices since we will add a barrier when
+    // we publish a pointer to "x" in prev[i].
+    x->NoBarrier_SetNext(i, prev[i]->NoBarrier_Next(i));
+    prev[i]->SetNext(i, x);
+  }
+}
+```
+
+```objc
+template<typename Key, class Comparator>
+int SkipList<Key,Comparator>::RandomHeight() {
+  // Increase height with probability 1 in kBranching
+  static const unsigned int kBranching = 4;
+  int height = 1;
+  while (height < kMaxHeight && ((rnd_.Next() % kBranching) == 0)) {
+    height++;
+  }
+  assert(height > 0);
+  assert(height <= kMaxHeight);
+  return height;
+}
+```
+
+```objc
+// Return the earliest node that comes at or after key.
+// Return NULL if there is no such node.
+//
+// If prev is non-NULL, fills prev[level] with pointer to previous
+// node at "level" for every level in [0..max_height_-1].
+template<typename Key, class Comparator>
+typename SkipList<Key,Comparator>::Node* SkipList<Key,Comparator>::FindGreaterOrEqual(const Key& key, Node** prev)
+    const {
+  Node* x = head_; // x指向head
+  int level = GetMaxHeight() - 1; // 获得当前的高度，从最顶层level开始查找
+  while (true) {
+    Node* next = x->Next(level);  
+    if (KeyIsAfterNode(key, next)) { // 要查找的值在前node后面，则继续在该层进行查找
+      // Keep searching in this list
+      x = next;
+    } else { // 要查找的值小于或等于当前node，则继续该该层进行查找
+      if (prev != NULL) prev[level] = x; // 记录在该层的前驱
+      if (level == 0) { // 所有层次的链表均遍历完，返回该位置。有可能是找到了，也有可能是第一个大于该值的位置
+        return next;
+      } else {
+        // Switch to next list
+        level--; // 转到下一层链表
+      }
+    }
+  }
+}
+```
+
+```objc
+template<typename Key, class Comparator>
+bool SkipList<Key,Comparator>::Contains(const Key& key) const {
+  Node* x = FindGreaterOrEqual(key, NULL);
+  if (x != NULL && Equal(key, x->key)) {
+    return true;
+  } else {
+    return false;
+  }
+}
+```
 
 - [LevelDB : SkipList](https://huntinux.github.io/leveldb-skiplist.html)
 - [Skip Lists](https://www.csee.umbc.edu/courses/341/fall01/Lectures/SkipLists/skip_lists/skip_lists.html)
