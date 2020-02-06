@@ -241,7 +241,7 @@ int SkipList<Key,Comparator>::RandomHeight() {
   // Increase height with probability 1 in kBranching
   static const unsigned int kBranching = 4;
   int height = 1;
-  while (height < kMaxHeight && ((rnd_.Next() % kBranching) == 0)) {
+  while (height < kMaxHeight && ((rnd_.Next() % kBranching) == 0)) {//随机插入节点层数，底层节点数为上层节点数数的4倍
     height++;
   }
   assert(height > 0);
