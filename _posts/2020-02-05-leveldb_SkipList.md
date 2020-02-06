@@ -73,6 +73,47 @@ we can safely cap levels at L(n), we should chooseMaxLevel = L(N) (where N is an
 ## 源码分析
 
 
+```objc
+template<typename Key, class Comparator>
+class SkipList {
+ private:
+  struct Node;//节点
+
+ public:
+  // Create a new SkipList object that will use "cmp" for comparing keys,
+  // and will allocate memory using "*arena".  Objects allocated in the arena
+  // must remain allocated for the lifetime of the skiplist object.
+  explicit SkipList(Comparator cmp, Arena* arena);
+
+  // Insert key into the list.
+  // REQUIRES: nothing that compares equal to key is currently in the list.
+  void Insert(const Key& key);
+
+  // Returns true iff an entry that compares equal to key is in the list.
+  bool Contains(const Key& key) const;
+
+  // Iteration over the contents of a skip list
+ ...省略了Iteraor迭代器的定义
+
+ private:
+  enum { kMaxHeight = 12 };//最大高度为12
+
+  // Immutable after construction
+  Comparator const compare_;
+  Arena* const arena_;    // Arena used for allocations of nodes 
+
+  Node* const head_;
+
+  // Modified only by Insert().  Read racily by readers, but stale
+  // values are ok.
+  port::AtomicPointer max_height_;   // Height of the entire list
+
+  inline int GetMaxHeight() const {
+    return static_cast<int>(
+        reinterpret_cast<intptr_t>(max_height_.NoBarrier_Load()));
+  }
+```
+
 
 - [LevelDB : SkipList](https://huntinux.github.io/leveldb-skiplist.html)
 - [Skip Lists](https://www.csee.umbc.edu/courses/341/fall01/Lectures/SkipLists/skip_lists/skip_lists.html)
