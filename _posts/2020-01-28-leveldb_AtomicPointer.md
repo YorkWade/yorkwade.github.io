@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      leveldb之AtomicPointer
-subtitle:   无锁编程
+subtitle:   内存屏障
 date:       2020-01-28
 author:     BY
 header-img: img/post-bg-mma-2.jpg
@@ -21,15 +21,51 @@ AtomicPointer 是 leveldb 提供的一个原子指针操作类，使用了基于
 如果你想实现下面这样的功能，那你可以考虑内存屏障：
 修改一个内存中的变量之后，其余的 CPU 和 Cache 里面该变量的原始数据失效，必须从内存中重新获取这个变量的值
 
-作者：程序小歌
-链接：https://www.jianshu.com/p/11bbf63a4e35
-来源：简书
-著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+详细信息可参考[【译】Memory Reordering Caught in the Act](https://www.jianshu.com/p/5b317882dda6)
 
-作者：程序小歌
-链接：https://www.jianshu.com/p/11bbf63a4e35
-来源：简书
-著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+无锁编程的概念做一般应用层开发的会较少接触到，因为多线程的时候对共享资源的操作一般是用锁来完成的。锁本身对这个任务完成的很好，但是存在性能的问题，也就是在对性能要求很高的，高并发的场景下，锁会带来性能瓶颈。所以在一些如数据库这样的应用或者linux 内核里经常会看到一些无锁的并发编程。
+
+锁是一个高层次的接口，隐藏了很多并发编程时会出现的非常古怪的问题。当不用锁的时候，就要考虑这些问题。主要有两个方面的影响：编译器对指令的排序和cpu对指令的排序。他们排序的目的主要是优化和提高效率。排序的原则是在单核单线程下最终的效果不会发生改变。单核多线程的时候，编译器的乱序就会带来问题，多核的时候，又会涉及cpu对指令的乱序。memory-ordering-at-compile-time和memory-reordering-caught-in-the-act里提到了乱序导致的问题。
+
+举个例子，有下面的代码
+```objc
+a = b = 0;
+//thread1
+a = 1
+b = 2
+
+//thread2
+if (b == 2) {
+    //这时a是1吗？
+}
+```
+假设只有单核单线程 1的时候，由于a 和 b 的赋值没有关系，因此编译器可能会先赋值b然后赋值a，注意单线程的情况下是没有问题的，但是如果还有线程2，那么就不能保证线程2看到b为2 的时候a就为1。再假设线程1改为如下的代码
+```objc
+a = 1
+complier_fence()
+b = 2
+```
+其中complier_fence()为一条阻止编译器在fence前后乱序的指令，x86/64下可以是下面的汇编语句，也可以由其他语言提供的语句保证。
+```objc
+asm volatile(“” ::: “memory”);
+```
+此时我们能保证b的赋值一定发生在a赋值之后。那么此时线程2的逻辑是对的吗？还不能保证。因为线程2可能会先读取a的旧值，然后再读取b的值。从编译器来看a和b之间没有关联，因此这样的优化是可能发生的。所以线程2也需要加上编译器级的屏障：
+```objc
+if (b == 2) {
+    complier_fence()
+    //这时a是1吗？
+}
+```
+加上了这些保证，编译器输出的指令能确保a，b之间的顺序性。注意a，b的赋值也可以换成更复杂的语句，屏障保证了屏障之前的读写一定发生在屏障之后的读写之前，但是屏障前后内部的原子性和顺序性是没有保证的。
+
+当把这样的程序放到多核的环境上运行的时候，a，b赋值之间的顺序性又没有保证了。这是由于多核cpu在执行编译器排序好的指令的时候还是会乱序执行。这个问题在memory-barriers-are-like-source-control-operations里有很好的解释。这里不再多说。
+
+同样的，为了解决这样的问题，语言上有一些语句提供屏障的效果，保证屏障前后指令执行的顺序性。而且，庆幸的是，一般，能保证cpu内存屏障的语句也会自动保证编译器级的屏障。注意，不同的cpu的内存模型（即对内存中的指令的执行顺序如何进行的模型）是不一样的，很辛运的，x86/64是的内存模型是强内存模型，它对cpu的乱序执行的影响是最小的。
+
+```objc
+A strong hardware memory model is one in which every machine instruction comes implicitly withacquire and release semantics. As a result, when one CPU core performs a sequence of writes, every other CPU core sees those values change in the same order that they were written.
+```
+因此在x86/64上可以不用考虑cpu的内存屏障，只需要在必要的时候考虑编译器的乱序问题即可。
 
 CPU可以保证**指针**操作的原子性，但编译器、CPU指令优化--重排序(reorder)可能导致指令乱序，在多线程情况下程序运行结果不符合预期。关于重排序说明如下:
 - 单核单线程时，重排序保证单核单线程下程序运行结果一致。
