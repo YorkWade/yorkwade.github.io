@@ -155,13 +155,13 @@ struct SkipList<Key,Comparator>::Node {
 
   // Accessors/mutators for links.  Wrapped in methods so we can
   // add the appropriate barriers as necessary.
-  Node* Next(int n) {
+  Node* Next(int n) {// 获取当前节点在指定level的下一个节点
     assert(n >= 0);
     // Use an 'acquire load' so that we observe a fully initialized
     // version of the returned Node.
     return reinterpret_cast<Node*>(next_[n].Acquire_Load());
   }
-  void SetNext(int n, Node* x) {
+  void SetNext(int n, Node* x) {// 将当前节点在指定level的下一个节点设置为x
     assert(n >= 0);
     // Use a 'release store' so that anybody who reads through this
     // pointer observes a fully initialized version of the inserted node.
@@ -169,11 +169,11 @@ struct SkipList<Key,Comparator>::Node {
   }
 
   // No-barrier variants that can be safely used in a few locations.
-  Node* NoBarrier_Next(int n) {
+  Node* NoBarrier_Next(int n) {// 无内存屏障版本next
     assert(n >= 0);
     return reinterpret_cast<Node*>(next_[n].NoBarrier_Load());
   }
-  void NoBarrier_SetNext(int n, Node* x) {
+  void NoBarrier_SetNext(int n, Node* x) {// 无内存屏障版本set
     assert(n >= 0);
     next_[n].NoBarrier_Store(x);
   }
