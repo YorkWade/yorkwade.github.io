@@ -149,4 +149,5 @@ class AtomicPointer {
 >- [《Memory Ordering at Compile Time》](https://preshing.com/20120625/memory-ordering-at-compile-time/)
 >- [LevelDB源码剖析之基础部件-AtomicPointer](https://www.jianshu.com/p/3161784e7573)
 >- [【译】Memory Reordering Caught in the Act](https://www.jianshu.com/p/5b317882dda6)
+>- [leveldb 源码分析(三) – Write](https://youjiali1995.github.io/storage/leveldb-write/)
 
