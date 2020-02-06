@@ -86,7 +86,7 @@ CPU可以保证**指针**操作的原子性，但编译器、CPU指令优化--�
 
 
 ## 源码实现
-
+windows版本：
 ```objc
 // Storage for a lock-free pointer
 class AtomicPointer {
@@ -111,11 +111,32 @@ class AtomicPointer {
 ```
 std::atomic是C++11提供的原子模板类，std::atomic对int、char、 bool等数据类型进行原子性封装。原子类型对象的主要特点就是从不同线程访问不会导致数据竞争(data race)。从不同线程访问某个原子对象是良性 (well-defined) 行为，而通常对于非原子类型而言，并发访问某个对象（如果不做任何同步操作）会导致未定义 (undifined) 行为发生。因此使用std::atomic可实现数据同步的无锁设计。
 
+linux版本：
 ```objc
-if (b == 2) {
-    complier_fence()
-    //这时a是1吗？
+inline void MemoryBarrier() {
+  // Seehttp://gcc.gnu.org/ml/gcc/2003-04/msg01180.html for a discussion on
+  // this idiom. Also seehttp://en.wikipedia.org/wiki/Memory_ordering.
+  __asm__ __volatile__("": : : "memory");
 }
+
+class AtomicPointer {
+ private:
+  void* rep_;
+ public:
+  AtomicPointer() { }
+  explicitAtomicPointer(void* p) : rep_(p) {}
+  inlinevoid* NoBarrier_Load()const { return rep_; }
+  inlinevoid NoBarrier_Store(void* v) { rep_ = v; }
+  inlinevoid* Acquire_Load()const {
+    void* result = rep_;
+    MemoryBarrier();
+    returnresult;
+  }
+  inlinevoid Release_Store(void* v) {
+    MemoryBarrier();
+    rep_ = v;
+  }
+};
 ```
 
 
