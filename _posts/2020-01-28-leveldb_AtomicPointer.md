@@ -22,6 +22,18 @@ CPU可以保证指针操作的原子性，但编译器、CPU指令优化--重排
 - 单核多线程时，编译器reorder可能导致运行结果不一致。参见[《memory-ordering-at-compile-time》](https://preshing.com/20120625/memory-ordering-at-compile-time/)。
 - 多核多线程时，编译器reorder、CPU reorder将导致运行结果不一致。参见[《memory-reordering-caught-in-the-act》](https://www.jianshu.com/p/5b317882dda6)。
 
+简单来说，在不跨越cacheline情况下，Intel处理器保证指针操作的原子性；跨域cacheline情况下，部分处理器提供了原子保证。在通常情况下，C++ new出来的指针及对象内部数据都是cacheline对其的，但如果使用 align 1 byte或者采用c++ placement new等特性时可能出现指针对象跨越cacheline的情况。
+在LevelDB中，指针操作是cacheline对齐的，因此问题一种NoBarrier_*的指针操作本身是原子的。那么，为何还需要Acqiure_Load和Release_Store呢？
+
+
+- **问**：代码中NoBarrier_Store/NoBarrier_Load操作只是最简单的指针操作，那么这些操作是原子的么？
+  **答**：在不跨越cacheline情况下，Intel处理器保证指针操作的原子性；跨域cacheline情况下，部分处理器提供了原子保证。LevelDB场景下不存在跨cacheline场景，因此这部分操作是原子的。
+- **问**：Acquire_Load/Release_Store操作增加了MemoryBarrier操作，其作用是什么？又如何保证原子性呢？
+  **答**：增加Memory Barrier是为了避免编译器重排序，保证MemoryBarrier前的全部操作真正在Memory Barrier前执行。
+- **问**：为何要设计这样两组操作？
+  **答**：性能。NoBarrier_Store/NoBarrier_Load的性能要优于Acquire_Load/Release_Store，但Acquire_Load/Release_Store可以避免编译器优化，由此保证load/store时指针里面的数据一定是最新的。
+- **问**：LevelDB代码中如何选择何时使用何种操作？
+  **答**：时刻小心。在任意一个用到指针的场景，结合上下文+并发考量选择合适的load/store方法。当然，一个比较保守的做法是，所有的场景下都使用带Memory Barrier的load/store方法，仅当确定可以使用NoBarrier的load/store方法才将其替换掉。
 
 ## 实现要点
 
