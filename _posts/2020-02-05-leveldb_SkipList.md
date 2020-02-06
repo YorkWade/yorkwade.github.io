@@ -196,7 +196,11 @@ SkipList<Key,Comparator>::NewNode(const Key& key, int height) {
 }
 ```
 
-插入操作
+插入操作：
+    首先更新插入节点的next指针，此处无并发问题。
+    修改插入位置前一节点的next指针，此处采用SetNext处理并发。
+    由最下层向上插入可以保证当前层一旦插入后，其下层已更新完毕并可用。
+当然，多个写之间的并发SkipList时非线程安全的，在LevelDB的MemTable中采用了另外的技巧来处理写并发问题。
 ```objc
 template<typename Key, class Comparator>
 void SkipList<Key,Comparator>::Insert(const Key& key) {
@@ -237,11 +241,28 @@ void SkipList<Key,Comparator>::Insert(const Key& key) {
   }
 }
 ```
-随后节点插入方是将无锁并发变为现实：
-    首先更新插入节点的next指针，此处无并发问题。
-    修改插入位置前一节点的next指针，此处采用SetNext处理并发。
-    由最下层向上插入可以保证当前层一旦插入后，其下层已更新完毕并可用。
-当然，多个写之间的并发SkipList时非线程安全的，在LevelDB的MemTable中采用了另外的技巧来处理写并发问题。
+需要注意的是使用 AtomicPointer 的地方:
+
+-    Skiplist::AtomicPointer max_height_：
+-        插入：使用 NoBarrier_Store 设置。
+-        查找：使用 NoBarrier_Load 读取。
+-    Node::AtomicPointer next_[1]：
+-        插入：设置被插入结点的 next_[] 时用的是 NoBarrier_Store，设置 prev 结点的 next_[] 时使用 Release_Store。
+-        查找：使用 AcquireLoad 读取 next_[]
+
+成对 Acquire_Load/Release_Store 能够保证在不同线程间立刻可见，且 Release_Store 之前的修改对 Acquire_Load 之后立即可见。因为查找是按照从高层向低层、从小 到大的顺序遍历，而插入的时候是按照从低层到高层、用 Release_Store 设置 prev 结点的 next_[]，确保了当观察到新插入的结点时，后续的遍历一定是个完好的 skiplist。
+
+![](https://youjiali1995.github.io/assets/images/leveldb/skiplist.png)
+
+需要注意一点，max_height_ 只保证了原子性，没有保证对 max_height_ 可见性，也没有保证对 next_[] 的可见性，但都不会影响读的结果。假设插入增大了 max_height_:
+
+-    读操作观察到了 max_height_ 的更新，对应上面两种情况分别是:
+-        新增的 level 的 head_ 都指向 NULL，leveldb 保证了 skiplist 中 NULL 是最大的，所以会立刻向下层查找。
+-        在某一层观察到了新插入的 key，继续遍历。
+-    读操作未观察到 max_height_ 的更新，直接从低层开始遍历不影响 skiplist 的查找。
+
+        
+
 
 
 随机生成高度
@@ -318,8 +339,16 @@ bool SkipList<Key,Comparator>::Contains(const Key& key) const {
   }
 }
 ```
+查找操作只会有下面2种情形：
+
+-    观察不到新插入的结点。
+-    在某一层观察到新插入的结点，且更低层也会观察到，也就是完好的 skiplist。
+
+当读写同时发生时，上述两种情况都有可能发生，但都不会影响正确的结果，因为不会查找正在插入的 key(Sequence 只有写操作完成才会更新)。 
 
 - [LevelDB : SkipList](https://huntinux.github.io/leveldb-skiplist.html)
 - [Skip Lists](https://www.csee.umbc.edu/courses/341/fall01/Lectures/SkipLists/skip_lists/skip_lists.html)
 - [LevelDB源码剖析之基础部件-SkipList](https://www.jianshu.com/p/6624befde844)
+- [leveldb 源码分析(三) – Write](https://youjiali1995.github.io/storage/leveldb-write/)
+
 
