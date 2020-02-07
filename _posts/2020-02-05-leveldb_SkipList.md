@@ -242,7 +242,7 @@ void SkipList<Key,Comparator>::Insert(const Key& key) {
     // NoBarrier_SetNext() suffices since we will add a barrier when
     // we publish a pointer to "x" in prev[i].
     x->NoBarrier_SetNext(i, prev[i]->NoBarrier_Next(i));
-    prev[i]->SetNext(i, x);
+    prev[i]->SetNext(i, x);//在store()之前的所有读写操作，不允许被移动到这个store()的后面
   }
 }
 ```
@@ -355,5 +355,5 @@ bool SkipList<Key,Comparator>::Contains(const Key& key) const {
 - [Skip Lists](https://www.csee.umbc.edu/courses/341/fall01/Lectures/SkipLists/skip_lists/skip_lists.html)
 - [LevelDB源码剖析之基础部件-SkipList](https://www.jianshu.com/p/6624befde844)
 - [leveldb 源码分析(三) – Write](https://youjiali1995.github.io/storage/leveldb-write/)
-
+- [理解 C++ 的 Memory Order](https://senlinzhan.github.io/2017/12/04/cpp-memory-order/)
 
