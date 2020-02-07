@@ -109,7 +109,11 @@ class AtomicPointer {
   }
 };
 ```
-std::atomic是C++11提供的原子模板类，std::atomic对int、char、 bool等数据类型进行原子性封装。原子类型对象的主要特点就是从不同线程访问不会导致数据竞争(data race)。从不同线程访问某个原子对象是良性 (well-defined) 行为，而通常对于非原子类型而言，并发访问某个对象（如果不做任何同步操作）会导致未定义 (undifined) 行为发生。因此使用std::atomic可实现数据同步的无锁设计。
+std::atomic是C++11提供的原子模板类，可实现数据同步的无锁设计。
+在这种模型下，store()使用memory_order_release，而load()使用memory_order_acquire。这种模型有两种效果，第一种是可以限制 CPU 指令的重排：
+- 在store()之前的所有读写操作，不允许被移动到这个store()的后面。
+- 在load()之后的所有读写操作，不允许被移动到这个load()的前面。
+除此之外，还有另一种效果：假设 Thread-1 store()的那个值，成功被 Thread-2 load()到了，那么 Thread-1 在store()之前对内存的所有写入操作，此时对 Thread-2 来说，都是可见的。
 
 linux版本：
 ```objc
@@ -150,4 +154,7 @@ class AtomicPointer {
 >- [LevelDB源码剖析之基础部件-AtomicPointer](https://www.jianshu.com/p/3161784e7573)
 >- [【译】Memory Reordering Caught in the Act](https://www.jianshu.com/p/5b317882dda6)
 >- [leveldb 源码分析(三) – Write](https://youjiali1995.github.io/storage/leveldb-write/)
+>- [理解 C++ 的 Memory Order](https://senlinzhan.github.io/2017/12/04/cpp-memory-order/)
+
+
 
