@@ -25,19 +25,20 @@ leveldb使用skiplist作为索引数据结构。
     
 Key的编码
 LevelDb的Memtable中KV对是根据Key大小有序存储的，在系统插入新的KV时，LevelDb要把这个KV插到合适的位置上以保持这种Key有序性。
-其中有两种key：LookUpKey和InternalKey
-最短的为InternalKey，就是userkey+sequence+type组成
-接下来是LookUpKey,由InternalKey的长度+InternalKey组成
-skiplist中存储的键为LookUpKey+value的长度+value
+其中有三种key：UserKey,LookUpKey和InternalKey<br>
+UserKey，是用户输入的Key，字符串类型<br>
+InternalKey，是userkey+sequence+type组成<br>
+    |user key|sequence number|type|<br>
+    internal key size=key_size+8<br>
+LookUpKey,由InternalKey的长度+InternalKey组成<br>
+    |internal key size|internalkey|<br>
+    
 
+
+了解了以上的Key，可明白skiplist中存储的键为LookUpKey+value的长度+value<br>
+VarInt(interbal key size)len | internal key | VarInt(value) len | value |
 ![](https://pic4.zhimg.com/80/v2-662b22e9fb3639adf416135d7200085b_hd.jpg)
-A: internal_key_size = userkey.size+8 变长编码
-B：userkey
-C：tag = 64位整型顺序号<<8+值类型 64位定长编码后的值
 
- memtable_key = A + B + C
- internal_key = B + C
- user_key = B
 
 ## 源码实现
 ``` obj
