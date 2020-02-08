@@ -69,12 +69,64 @@ char* EncodeVarint64(char* dst, uint64_t v) {
   return reinterpret_cast<char*>(ptr);
 }
 ```
-两种实现方式，是为了让读者更容易看懂编码方式吧。<br>
-与Varint有关的有这几个函数：<br>
-VarintLength<br>
-EncodeVarint32<br>
-GetVarint32Ptr<br>
-GetLengthPrefixedSlice<br>
+两种实现方式，是为了让读者更容易看懂编码方式吧
+
+Varint 解码
+
+理解了编码的原理，再来看解码就很轻松了，直接调用GetVarint32Ptr 函数，该函数处理value < 128的情况，即varint只占一个字节的情况，对于varint 大于一个字节的情况，GetVarint32Ptr调用GetVarint32PtrFallback来处理。
+```objc
+inline const char* GetVarint32Ptr(const char* p,
+                                  const char* limit,
+                                  uint32_t* value) {
+  if (p < limit) {
+    uint32_t result = *(reinterpret_cast<const unsigned char*>(p));
+    if ((result & 128) == 0) {
+      *value = result;
+      return p + 1;
+    }
+  }
+  return GetVarint32PtrFallback(p, limit, value);
+}
+```
+在GetVarint32Ptr和GetVarint32PtrFallback函数中，参数p 是指向一个包含varint的字符串，limit在调用的时候都是赋值为limit= p + 5, 这是因为varint最多占用5个字节。value用于存储返回的int值。
+```objc
+const char* GetVarint32PtrFallback(const char* p,
+                                   const char* limit,
+                                   uint32_t* value) {
+  uint32_t result = 0;
+  for (uint32_t shift = 0; shift <= 28 && p < limit; shift += 7) {//shift <= 28最多移动4个字节，p < limit不超过5字节
+    uint32_t byte = *(reinterpret_cast<const unsigned char*>(p));
+    p++;
+    if (byte & 128) {
+      // More bytes are present
+      result |= ((byte & 127) << shift);//127二进制(0111 1111)
+    } else {
+      result |= (byte << shift);
+      *value = result;
+      return reinterpret_cast<const char*>(p);
+    }
+  }
+  return NULL;
+}
+```
+```objc
+const char* GetVarint64Ptr(const char* p, const char* limit, uint64_t* value) {
+  uint64_t result = 0;
+  for (uint32_t shift = 0; shift <= 63 && p < limit; shift += 7) {
+    uint64_t byte = *(reinterpret_cast<const unsigned char*>(p));
+    p++;
+    if (byte & 128) {
+      // More bytes are present
+      result |= ((byte & 127) << shift);
+    } else {
+      result |= (byte << shift);
+      *value = result;
+      return reinterpret_cast<const char*>(p);
+    }
+  }
+  return NULL;
+}
+```
 
 
 
