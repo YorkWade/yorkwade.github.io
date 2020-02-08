@@ -36,7 +36,7 @@ LevelDb的Memtable中KV对是根据Key大小有序存储的，在系统插入新
 ```objc
     |internal key size|internalkey|<br>
 ```
-![](https://bean-li.github.io/assets/LevelDB/leveldb-keys.png)
+![](https://bean-li.github.io/assets/LevelDB/leveldb_key.png)
 
 了解了以上的Key，可明白skiplist中存储的键为LookUpKey+value的长度+value<br>
 VarInt(interbal key size)len | internal key | VarInt(value) len | value |
