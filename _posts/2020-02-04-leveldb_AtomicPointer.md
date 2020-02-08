@@ -121,14 +121,13 @@ std::atomic是C++11提供的原子模板类，可实现数据同步的无锁设�
 - 在load()之后的所有读写操作，不允许被移动到这个load()的前面。
 除此之外，还有另一种效果：假设 Thread-1 store()的那个值，成功被 Thread-2 load()到了，那么 Thread-1 在store()之前对内存的所有写入操作，此时对 Thread-2 来说，都是可见的。
 
-linux版本：
+linux版本：MemoryBarrier函数实现是inline且嵌入一条汇编指令__asm__ __volatile__(“” : : : “memory”);，__volatile__表示阻止编译器对该值进行优化，强制变量使用精确内存地址（非 cache或register），memory表示对内存有修改操作，需要重新读入，该指令能够阻止编译器乱序，但不能阻止CPU乱序执行（在SMP体系下）
 ```objc
 inline void MemoryBarrier() {
   // Seehttp://gcc.gnu.org/ml/gcc/2003-04/msg01180.html for a discussion on
   // this idiom. Also seehttp://en.wikipedia.org/wiki/Memory_ordering.
   __asm__ __volatile__("": : : "memory");
 }
-MemoryBarrier函数实现是inline且嵌入一条汇编指令__asm__ __volatile__(“” : : : “memory”);，__volatile__表示阻止编译器对该值进行优化，强制变量使用精确内存地址（非 cache或register），memory表示对内存有修改操作，需要重新读入，该指令能够阻止编译器乱序，但不能阻止CPU乱序执行（在SMP体系下）
 
 class AtomicPointer {
  private:
