@@ -1,15 +1,14 @@
 ---
 layout:     post
-title:      Mac 快速调出终端
-subtitle:   在Mac下为终端设置快捷键
-date:       2017-02-06
+title:      leveldb之MemTable
+subtitle:   所有的应用都是内存数据库加上业务逻辑
+date:       2002-02-09
 author:     BY
 header-img: img/post-bg-re-vs-ng2.jpg
 catalog: true
 tags:
-    - Mac
-    - 效率
-    - 开发技巧
+    - leveldb
+    
 ---
 
 >在Mac下快速调出终端的方法是：为终端添加一个快捷键打开方式
@@ -35,7 +34,12 @@ tags:
 修改框内的脚本
 
 ```
-on run {input, parameters}	tell application "Terminal"		reopen		activate	end tellend run
+on run {input, parameters}
+	tell application "Terminal"
+		reopen
+		activate
+	end tell
+end run
 
 ```
 
