@@ -11,11 +11,15 @@ tags:
     
 ---
 
->在Mac下快速调出终端的方法是：为终端添加一个快捷键打开方式
+>在Leveldb中，所有内存中的KV数据都存储在Memtable中,内部使用[SkipList](https://yorkwade.github.io/2020/02/05/leveldb_SkipList/)实现。当Memtable写入的数据占用内存到达指定数量，则自动转换为Immutable Memtable，等待Dump到磁盘中，系统会自动生成新的Memtable供写操作写入新数据。
 
 ## 为终端添加一个快捷键打开方式
 
-打开Mac下自带的软件 **Automator**
+levedb三个存储区域：Memtable，Immutable Memtable和SSTable中的。Memtable，Immutable Memtable结构一样，差别在于：<br>
+    memtable 允许写入跟读取。<br>
+    immutable memtable只读。<br>
+
+
 
 ![](https://ww2.sinaimg.cn/large/006tKfTcgy1fckb184f74j319v0q01kx.jpg)
 
