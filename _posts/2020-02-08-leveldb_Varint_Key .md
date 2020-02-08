@@ -1,15 +1,13 @@
 ---
 layout:     post
-title:      文件目录树状(tree)显示
-subtitle:   Mac终端显示输树状文件结构
-date:       2017-03-07
+title:      leveldb之Varint、Key
+subtitle:   编码
+date:       2020-02-08
 author:     BY
 header-img: img/post-bg-debug.png
 catalog: true
 tags:
-    - Mac
-    - 效率
-    - 开发技巧
+    - leveldb
 ---
 
 > 使用 **tree** 在终端显示树状文件结构
