@@ -26,19 +26,17 @@ leveldb使用skiplist作为索引数据结构。
 Key的编码
 LevelDb的Memtable中KV对是根据Key大小有序存储的，在系统插入新的KV时，LevelDb要把这个KV插到合适的位置上以保持这种Key有序性。
 其中有三种key：UserKey,LookUpKey和InternalKey<br>
-UserKey，是用户输入的Key，Slice字符串类型<br>
-InternalKey，是userkey+sequence+type组成<br>
+**UserKey**，是用户输入的Key，Slice字符串类型<br>
+**InternalKey**，是userkey+sequence+type组成<br>
 ```objc
     |user key|sequence number|type|<br>
     internal key size=key_size+8<br>
 ```
-LookUpKey,由InternalKey的长度+InternalKey组成<br>
+**LookUpKey**,由InternalKey的长度+InternalKey组成<br>
 ```objc
     |internal key size|internalkey|<br>
 ```
-    
-    
-
+![](https://bean-li.github.io/assets/LevelDB/leveldb-keys.png)
 
 了解了以上的Key，可明白skiplist中存储的键为LookUpKey+value的长度+value<br>
 VarInt(interbal key size)len | internal key | VarInt(value) len | value |
