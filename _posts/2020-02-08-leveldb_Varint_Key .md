@@ -29,7 +29,9 @@ Varint是一种比较特殊的整数类型，它包含有Varint32和Varint64两�
 
 关于MemTable的内容前面已经讲的差不多了，但不知道读者有没有注意到这几个函数：
 VarintLength
+
 EncodeVarint32
+
 EncodeFixed64
 GetVarint32Ptr
 DecodeFixed64
