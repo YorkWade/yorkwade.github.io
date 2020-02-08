@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      leveldb之Varint、Key
+title:      leveldb之Varint
 subtitle:   编码
 date:       2020-02-08
 author:     BY
