@@ -224,6 +224,12 @@ void InternalKeyComparator::FindShortestSeparator(
   }
 }
 ```
+```objc
+// We leave eight bits empty at the bottom so a type and sequence#
+// can be packed together into 64-bits.
+static const SequenceNumber kMaxSequenceNumber =
+    ((0x1ull << 56) - 1);
+```
 1）该函数取出Internal Key中的user_key字段，根据用户指定的comparator找到短字符串并替换user_start。此时user_start物理上是变短了，但是逻辑上却变大了<br>
 2）如果user_start被替换了，就用新的user_start更新Internal Key，并使用最大的sequence number。否则start保持不变。<br>
 
