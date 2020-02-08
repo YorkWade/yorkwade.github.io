@@ -13,7 +13,10 @@ tags:
 
 >在Leveldb中，所有内存中的KV数据都存储在Memtable中,内部使用[SkipList](https://yorkwade.github.io/2020/02/05/leveldb_SkipList/)实现。当Memtable写入的数据占用内存到达指定数量，则自动转换为Immutable Memtable，等待Dump到磁盘中，系统会自动生成新的Memtable供写操作写入新数据。
 
-## 为终端添加一个快捷键打开方式
+## 实现要点
+- 高效插入、高效查询。索引的数据结构
+- 多线程并发时的同步。
+
 
 levedb三个存储区域：Memtable，Immutable Memtable和SSTable中的。Memtable，Immutable Memtable结构一样，差别在于：<br>
     memtable 允许写入跟读取。<br>
@@ -23,39 +26,92 @@ levedb三个存储区域：Memtable，Immutable Memtable和SSTable中的。Memta
 
 ![](https://ww2.sinaimg.cn/large/006tKfTcgy1fckb184f74j319v0q01kx.jpg)
 
-新建文稿
 
-![](https://ww1.sinaimg.cn/large/006tKfTcgy1fckb6zzo28j30mo0fvgn7.jpg)
+## 源码实现
+``` obj
+class InternalKeyComparator;
+class Mutex;
+class MemTableIterator;
 
-创建一个服务
+class MemTable {
+ public:
+  // MemTables are reference counted.  The initial reference count
+  // is zero and the caller must call Ref() at least once.
+  explicit MemTable(const InternalKeyComparator& comparator);
 
-![](https://ww1.sinaimg.cn/large/006tKfTcgy1fckb93qmy5j30g00fh0vq.jpg)
+  // Increase reference count.
+  void Ref() { ++refs_; }
 
-![](https://ww2.sinaimg.cn/large/006tKfTcgy1fckbfe8o0zj30t10lb0wv.jpg)
+  // Drop reference count.  Delete if no more references exist.
+  void Unref() {
+    --refs_;
+    assert(refs_ >= 0);
+    if (refs_ <= 0) {
+      delete this;
+    }
+  }
 
-![](https://ww1.sinaimg.cn/large/006tKfTcgy1fckbff4e7pj30t10lbwis.jpg)
+  // Returns an estimate of the number of bytes of data in use by this
+  // data structure.
+  //
+  // REQUIRES: external synchronization to prevent simultaneous
+  // operations on the same MemTable.
+  size_t ApproximateMemoryUsage();
 
-修改框内的脚本
+  // Return an iterator that yields the contents of the memtable.
+  //
+  // The caller must ensure that the underlying MemTable remains live
+  // while the returned iterator is live.  The keys returned by this
+  // iterator are internal keys encoded by AppendInternalKey in the
+  // db/format.{h,cc} module.
+  Iterator* NewIterator();
+
+  // Add an entry into memtable that maps key to value at the
+  // specified sequence number and with the specified type.
+  // Typically value will be empty if type==kTypeDeletion.
+  void Add(SequenceNumber seq, ValueType type,
+           const Slice& key,
+           const Slice& value);
+
+  // If memtable contains a value for key, store it in *value and return true.
+  // If memtable contains a deletion for key, store a NotFound() error
+  // in *status and return true.
+  // Else, return false.
+  bool Get(const LookupKey& key, std::string* value, Status* s);
+
+ private:
+  ~MemTable();  // Private since only Unref() should be used to delete it
+
+  struct KeyComparator {
+    const InternalKeyComparator comparator;
+    explicit KeyComparator(const InternalKeyComparator& c) : comparator(c) { }
+    int operator()(const char* a, const char* b) const;
+  };
+  friend class MemTableIterator;
+  friend class MemTableBackwardIterator;
+
+  typedef SkipList<const char*, KeyComparator> Table;
+
+  KeyComparator comparator_;
+  int refs_;
+  Arena arena_;
+  Table table_;
+
+  // No copying allowed
+  MemTable(const MemTable&);
+  void operator=(const MemTable&);
+};
 
 ```
-on run {input, parameters}
-	tell application "Terminal"
-		reopen
-		activate
-	end tell
-end run
+MemTable的核心组件有三个：
+- [SkipList](https://yorkwade.github.io/2020/02/05/leveldb_SkipList/)
+- [Arena](https://yorkwade.github.io/2020/02/04/leveldb_Arena/)
+- KeyComparator
 
-```
+MemTable的主要接口两个：
+- Add
+- Get
 
-运行：`command + R`，如果没有问题，则会打开终端
-
-![](https://ww2.sinaimg.cn/large/006tKfTcgy1fckaqdd2m1j30t10lb42a.jpg)
-
-![](https://ww3.sinaimg.cn/large/006tKfTcgy1fckaq4nn9hj30iy0daaan.jpg)
-
-保存：`Command + S`，将其命名为`打开终端`或你想要的名字
-
-设置快捷键
 
 在 **系统偏好设置** -> **键盘设置** -> **快捷键** -> **服务**
 
