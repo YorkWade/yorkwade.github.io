@@ -27,10 +27,22 @@ Varint是一种比较特殊的整数类型，它包含有Varint32和Varint64两�
 	
 #### 源码分析  
 
+关于MemTable的内容前面已经讲的差不多了，但不知道读者有没有注意到这几个函数：
+VarintLength
+EncodeVarint32
+EncodeFixed64
+GetVarint32Ptr
+DecodeFixed64
+GetLengthPrefixedSlice
+
+
+
+
+
 	
 	
 - [LevelDB源码剖析之Varint](http://mingxinglai.com/cn/2013/01/leveldb-varint32/)
-- [Skip Lists](https://www.csee.umbc.edu/courses/341/fall01/Lectures/SkipLists/skip_lists/skip_lists.html)
+- [Leveldb varint 解析](https://ce39906.github.io/2018/04/17/Leveldb-varint-%E8%A7%A3%E6%9E%90/)
 - [LevelDB源码剖析之基础部件-SkipList](https://www.jianshu.com/p/6624befde844)
 - [leveldb 源码分析(三) – Write](https://youjiali1995.github.io/storage/leveldb-write/)
 - [理解 C++ 的 Memory Order](https://senlinzhan.github.io/2017/12/04/cpp-memory-order/)
