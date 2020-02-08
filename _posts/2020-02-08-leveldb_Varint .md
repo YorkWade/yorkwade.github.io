@@ -12,7 +12,7 @@ tags:
 
 > leveldb中编码如何省空间
 
-levelDB设计时希望尽量能够节省时间，实现了Varint这种编码方式，其实这种方式在[protobuf编码](https://www.wandouip.com/t5i125413/）等地方也都存在类似技巧的影子。
+levelDB设计时希望尽量能够节省时间，实现了Varint这种编码方式，其实这种方式在[Protocol Buffer](https://www.wandouip.com/t5i125413/)等地方也都存在类似技巧的影子。
 
 #### 理论背景
 Varint是一种比较特殊的整数类型，它包含有Varint32和Varint64两种，它相比于int32和int64最大的特点是长度可变。
