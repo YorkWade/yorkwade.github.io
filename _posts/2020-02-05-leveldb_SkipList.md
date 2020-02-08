@@ -212,7 +212,7 @@ void SkipList<Key,Comparator>::Insert(const Key& key) {
   // TODO(opt): We can use a barrier-free variant of FindGreaterOrEqual()
   // here since Insert() is externally synchronized.
   Node* prev[kMaxHeight];
-  Node* x = FindGreaterOrEqual(key, prev); // 进行查找
+  Node* x = FindGreaterOrEqual(key, prev); //寻找第一个大于等于 Key 值的节点，同时将该节点的前置节点存放在数组 prev 中
 
   // Our data structure does not allow duplicate insertion
   assert(x == NULL || !Equal(key, x->key)); // 不允许插入重复数据
@@ -238,11 +238,11 @@ void SkipList<Key,Comparator>::Insert(const Key& key) {
   }
 
   x = NewNode(key, height);          // 生成一个新节点
-  for (int i = 0; i < height; i++) { // 插入该节点
+  for (int i = 0; i < height; i++) { // 将该节点串接到所有的链表中
     // NoBarrier_SetNext() suffices since we will add a barrier when
     // we publish a pointer to "x" in prev[i].
     x->NoBarrier_SetNext(i, prev[i]->NoBarrier_Next(i));
-    prev[i]->SetNext(i, x);//在store()之前的所有读写操作，不允许被移动到这个store()的后面
+    prev[i]->SetNext(i, x);// 内部使用内存屏障同步操作，在store()之前的所有读写操作，不允许被移动到这个store()的后面，防止重排序
   }
 }
 ```
