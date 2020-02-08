@@ -14,16 +14,18 @@ tags:
 >在Leveldb中，所有内存中的KV数据都存储在Memtable中,内部使用[SkipList](https://yorkwade.github.io/2020/02/05/leveldb_SkipList/)实现。当Memtable写入的数据占用内存到达指定数量，则自动转换为Immutable Memtable，等待Dump到磁盘中，系统会自动生成新的Memtable供写操作写入新数据。
 
 ## 实现要点
-- 高效插入、高效查询。索引的数据结构
-- 多线程并发时的同步。
-
-leveldb使用skiplist作为索引数据结构。
-- 为什么不使用hash索引结构？<br>
+- 索引的数据结构<br>
+  1、高效插入、高效查询。索引的数据结构<br>
+  2、多线程并发时的同步。<br>
+leveldb使用skiplist作为索引数据结构。<br>
+为什么不使用hash索引结构？<br>
     因为hash（无序），区间搜索效率低。hash变满时，继续增长的代价昂贵，hash冲突时序如则的处理逻辑。<br>
-- 为什么不使用B-Tree更为成熟的数据结构？<br>
+为什么不使用B-Tree更为成熟的数据结构？<br>
     SkipList具有同样的查询效率，实现简单，且数据**加锁**更容易。
     
-Key的编码
+- Key的编码<br>
+1、同一key的多次插入的排序<br>
+2、不同key的排序<br>
 LevelDb的Memtable中KV对是根据Key大小有序存储的，在系统插入新的KV时，LevelDb要把这个KV插到合适的位置上以保持这种Key有序性。
 其中有三种key：UserKey,LookUpKey和InternalKey<br>
 **UserKey**，是用户输入的Key，Slice字符串类型<br>
