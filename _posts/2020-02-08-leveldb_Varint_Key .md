@@ -27,12 +27,53 @@ Varint是一种比较特殊的整数类型，它包含有Varint32和Varint64两�
 	
 #### 源码分析  
 
-关于MemTable的内容前面已经讲的差不多了，但不知道读者有没有注意到这几个函数：<br>
+```objc
+inline char* Varint::Encode32(char* sptr, uint32 v) {
+  // Operate on characters as unsigneds
+  unsigned char* ptr = reinterpret_cast<unsigned char*>(sptr);
+  static const int B = 128;//(二进制为 1000 0000，16进制为0x80)
+  if (v < (1<<7)) {//判断是需要用1个字节编码
+    *(ptr++) = v;
+  } else if (v < (1<<14)) {//判断是需要用2个字节编码
+    *(ptr++) = v | B;//置最高位为1，以下均是。
+    *(ptr++) = v>>7;
+  } else if (v < (1<<21)) {//判断是需要用3个字节编码
+    *(ptr++) = v | B;
+    *(ptr++) = (v>>7) | B;
+    *(ptr++) = v>>14;
+  } else if (v < (1<<28)) {//判断是需要用4个字节编码
+    *(ptr++) = v | B;
+    *(ptr++) = (v>>7) | B;
+    *(ptr++) = (v>>14) | B;
+    *(ptr++) = v>>21;
+  } else {//判断是需要用5个字节编码
+    *(ptr++) = v | B;
+    *(ptr++) = (v>>7) | B;
+    *(ptr++) = (v>>14) | B;
+    *(ptr++) = (v>>21) | B;
+    *(ptr++) = v>>28;
+  }
+  return reinterpret_cast<char*>(ptr);
+}
+```
+大牛能写这样的烂代码？再看EncodeVarint64，逻辑一样，实现就比较高级了。
+```objc
+char* EncodeVarint64(char* dst, uint64_t v) {
+  static const int B = 128;//(二进制为 1000 0000，16进制为0x80)
+  unsigned char* ptr = reinterpret_cast<unsigned char*>(dst);
+  while (v >= B) {//是否还需要2个或2个以上字节编码
+    *(ptr++) = (v & (B-1)) | B;//（B-1）二进制为(0111 1111)
+    v >>= 7;//编码从低位到高位
+  }
+  *(ptr++) = static_cast<unsigned char>(v);//编码的最高字节
+  return reinterpret_cast<char*>(ptr);
+}
+```
+两种实现方式，是为了让读者更容易看懂编码方式吧。<br>
+与Varint有关的有这几个函数：<br>
 VarintLength<br>
 EncodeVarint32<br>
-EncodeFixed64<br>
 GetVarint32Ptr<br>
-DecodeFixed64<br>
 GetLengthPrefixedSlice<br>
 
 
@@ -43,6 +84,4 @@ GetLengthPrefixedSlice<br>
 	
 - [LevelDB源码剖析之Varint](http://mingxinglai.com/cn/2013/01/leveldb-varint32/)
 - [Leveldb varint 解析](https://ce39906.github.io/2018/04/17/Leveldb-varint-%E8%A7%A3%E6%9E%90/)
-- [LevelDB源码剖析之基础部件-SkipList](https://www.jianshu.com/p/6624befde844)
-- [leveldb 源码分析(三) – Write](https://youjiali1995.github.io/storage/leveldb-write/)
-- [理解 C++ 的 Memory Order](https://senlinzhan.github.io/2017/12/04/cpp-memory-order/)
+- [Protocol Buffer 序列化原理大揭秘](https://www.wandouip.com/t5i125413/)
