@@ -111,7 +111,8 @@ Status Writer::AddRecord(const Slice& slice) {
 
     // Invariant: we never leave < kHeaderSize bytes in a block.
     assert(kBlockSize - block_offset_ - kHeaderSize >= 0);
-
+    // 计算page能否容纳整体日志，如果不能，则将日志切分为多条entry，插入不同的page中，
+    // type中注明该entry是日志的开头部分，中间部分还是结尾部分。
     const size_t avail = kBlockSize - block_offset_ - kHeaderSize;
     const size_t fragment_length = (left < avail) ? left : avail;
 
@@ -181,19 +182,19 @@ public:
     virtual Status Sync();
     BOOL isEnable();
 private:
-    std::string _filename;
+    std::string _filename;  
     HANDLE _hFile;
     size_t _page_size;
     size_t _map_size;       // How much extra memory to map at a time
     char* _base;            // The mapped region
     HANDLE _base_handle;	
     char* _limit;           // Limit of the mapped region
-    char* _dst;             // Where to write next  (in range [base_,limit_])
+    char* _dst;             // Where to write next  (in range [base_,limit_]) 
     char* _last_sync;       // Where have we synced up to
     uint64_t _file_offset;  // Offset of base_ in file
     //LARGE_INTEGER file_offset_;
     // Have we done an munmap of unsynced data?
-    bool _pending_sync;
+    bool _pending_sync;     
 
     // Roundup x to a multiple of y
     static size_t _Roundup(size_t x, size_t y);
