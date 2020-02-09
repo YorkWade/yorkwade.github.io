@@ -43,13 +43,13 @@ chunk共有四种类型：full，first，middle，last。一条日志记录若�
 leveldb使用[Windws内存映射文件](http://blog.tk-xiong.com/archives/933)来实现（来自Windows核心编程 – 第十七章 第三节 – 使用内存映射文件）<br>
 
 要使用内存映射文件，需要执行下面三个步骤：<br>
-    创建或打开一个文件内核对象，该对象标识了我们想要用作内存映射文件的那个磁盘文件。<br>
-    创建一个文件映射内核对象来告诉系统文件的大小以及我们打算如何访问文件。<br>
-    高速系统把文件映射对象的部分或全部映射到进程的地址空间中。<br>
+    1、创建或打开一个文件内核对象，该对象标识了我们想要用作内存映射文件的那个磁盘文件。<br>
+    2、创建一个文件映射内核对象来告诉系统文件的大小以及我们打算如何访问文件。<br>
+    3、高速系统把文件映射对象的部分或全部映射到进程的地址空间中。<br>
 用完内存映射文件后，必须执行下面三个步骤来做清理工作：<br>
-    告诉系统从进程地址空间中取消对文件映射内核对象的映射<br>
-    关闭文件映射内核对象<br>
-    关闭文件内核对象<br>
+    1、告诉系统从进程地址空间中取消对文件映射内核对象的映射<br>
+    2、关闭文件映射内核对象<br>
+    3、关闭文件内核对象<br>
 主要代码如下：
 ```
 HANDLE hFile = CreateFile(...);
@@ -214,7 +214,4 @@ private:
 
 
 - [leveldb_handbook](https://leveldb-handbook.readthedocs.io/zh/latest/journal.html)
-- [Skip Lists](https://www.csee.umbc.edu/courses/341/fall01/Lectures/SkipLists/skip_lists/skip_lists.html)
-- [LevelDB源码剖析之基础部件-SkipList](https://www.jianshu.com/p/6624befde844)
-- [leveldb 源码分析(三) – Write](https://youjiali1995.github.io/storage/leveldb-write/)
-- [理解 C++ 的 Memory Order](https://senlinzhan.github.io/2017/12/04/cpp-memory-order/)
+- [Windws内存映射文件](http://blog.tk-xiong.com/archives/933)
