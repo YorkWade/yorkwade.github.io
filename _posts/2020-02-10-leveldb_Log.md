@@ -135,7 +135,7 @@ Status Writer::AddRecord(const Slice& slice) {
   return s;
 }
 ```
-![](https://izualzhy.cn/assets/images/leveldb/log_format.png)
+![](https://izualzhy.cn/assets/images/leveldb/log_format.png)<br>
 其中 static const int kBlockSize = 32768;//32k
 
 ```objc
