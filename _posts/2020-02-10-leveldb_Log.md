@@ -37,6 +37,183 @@ chunk共有四种类型：full，first，middle，last。一条日志记录若�
 
 ![](https://leveldb-handbook.readthedocs.io/zh/latest/_images/journal_content.jpeg)
 
+
+## 实现要点
+
+leveldb使用[Windws内存映射文件]（http://blog.tk-xiong.com/archives/933）来实现日志记录<br>
+来自Windows核心编程 – 第十七章 第三节 – 使用内存映射文件。<br>
+本小节会讲到如何使用内存映射文件，在最后会附上一个实例教程。<br>
+要使用内存映射文件，需要执行下面三个步骤：<br>
+    创建或打开一个文件内核对象，该对象标识了我们想要用作内存映射文件的那个磁盘文件。<br>
+    创建一个文件映射内核对象来告诉系统文件的大小以及我们打算如何访问文件。<br>
+    高速系统把文件映射对象的部分或全部映射到进程的地址空间中。<br>
+用完内存映射文件后，必须执行下面三个步骤来做清理工作：<br>
+    告诉系统从进程地址空间中取消对文件映射内核对象的映射<br>
+    关闭文件映射内核对象<br>
+    关闭文件内核对象<br>
+主要流程如下：
+```
+HANDLE hFile = CreateFile(...);
+HANDLE hFileMapping = CreateFileMapping(hFile, ...);
+PVOID pvFile = MapViewOfFile(hFileMapping, ...);
+ 
+//Use the memory-mapped file.
+ 
+UnmapViewOfFile(pvFile);
+CloseHandle(hFileMapping);
+CloseHandle(hFile);
+```
+
+## 源码分析
+```objc
+class Writer {
+ public:
+  // Create a writer that will append data to "*dest".
+  // "*dest" must be initially empty.
+  // "*dest" must remain live while this Writer is in use.
+  explicit Writer(WritableFile* dest);
+  ~Writer();
+
+  Status AddRecord(const Slice& slice);
+
+ private:
+  WritableFile* dest_;
+  int block_offset_;       // Current offset in block
+
+  // crc32c values for all supported record types.  These are
+  // pre-computed to reduce the overhead of computing the crc of the
+  // record type stored in the header.
+  uint32_t type_crc_[kMaxRecordType + 1];
+
+  Status EmitPhysicalRecord(RecordType type, const char* ptr, size_t length);
+
+  // No copying allowed
+  Writer(const Writer&);
+  void operator=(const Writer&);
+};
+```
+
+```
+Status Writer::AddRecord(const Slice& slice) {
+  const char* ptr = slice.data();
+  size_t left = slice.size();
+
+  // Fragment the record if necessary and emit it.  Note that if slice
+  // is empty, we still want to iterate once to emit a single
+  // zero-length record
+  Status s;
+  bool begin = true;
+  do {
+    const int leftover = kBlockSize - block_offset_;
+    assert(leftover >= 0);
+    if (leftover < kHeaderSize) {
+      // Switch to a new block
+      if (leftover > 0) {
+        // Fill the trailer (literal below relies on kHeaderSize being 7)
+        assert(kHeaderSize == 7);
+        dest_->Append(Slice("\x00\x00\x00\x00\x00\x00", leftover));
+      }
+      block_offset_ = 0;
+    }
+
+    // Invariant: we never leave < kHeaderSize bytes in a block.
+    assert(kBlockSize - block_offset_ - kHeaderSize >= 0);
+
+    const size_t avail = kBlockSize - block_offset_ - kHeaderSize;
+    const size_t fragment_length = (left < avail) ? left : avail;
+
+    RecordType type;
+    const bool end = (left == fragment_length);
+    if (begin && end) {
+      type = kFullType;
+    } else if (begin) {
+      type = kFirstType;
+    } else if (end) {
+      type = kLastType;
+    } else {
+      type = kMiddleType;
+    }
+
+    s = EmitPhysicalRecord(type, ptr, fragment_length);
+    ptr += fragment_length;
+    left -= fragment_length;
+    begin = false;
+  } while (s.ok() && left > 0);
+  return s;
+}
+```
+
+
+```
+Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
+  assert(n <= 0xffff);  // Must fit in two bytes
+  assert(block_offset_ + kHeaderSize + n <= kBlockSize);
+
+  // Format the header
+  char buf[kHeaderSize];
+  buf[4] = static_cast<char>(n & 0xff);
+  buf[5] = static_cast<char>(n >> 8);
+  buf[6] = static_cast<char>(t);
+
+  // Compute the crc of the record type and the payload.
+  uint32_t crc = crc32c::Extend(type_crc_[t], ptr, n);
+  crc = crc32c::Mask(crc);                 // Adjust for storage
+  EncodeFixed32(buf, crc);
+
+  // Write the header and the payload
+  Status s = dest_->Append(Slice(buf, kHeaderSize));
+  if (s.ok()) {
+    s = dest_->Append(Slice(ptr, n));
+    if (s.ok()) {
+      s = dest_->Flush();
+    }
+  }
+  block_offset_ += kHeaderSize + n;
+  return s;
+}
+```
+
+leveldb使用文件映射来进行日志记录
+```
+class Win32MapFile : public WritableFile
+{
+public:
+    Win32MapFile(const std::string& fname);
+
+    ~Win32MapFile();
+    virtual Status Append(const Slice& data);
+    virtual Status Close();
+    virtual Status Flush();
+    virtual Status Sync();
+    BOOL isEnable();
+private:
+    std::string _filename;
+    HANDLE _hFile;
+    size_t _page_size;
+    size_t _map_size;       // How much extra memory to map at a time
+    char* _base;            // The mapped region
+    HANDLE _base_handle;	
+    char* _limit;           // Limit of the mapped region
+    char* _dst;             // Where to write next  (in range [base_,limit_])
+    char* _last_sync;       // Where have we synced up to
+    uint64_t _file_offset;  // Offset of base_ in file
+    //LARGE_INTEGER file_offset_;
+    // Have we done an munmap of unsynced data?
+    bool _pending_sync;
+
+    // Roundup x to a multiple of y
+    static size_t _Roundup(size_t x, size_t y);
+    size_t _TruncateToPageBoundary(size_t s);
+    bool _UnmapCurrentRegion();
+    bool _MapNewRegion();
+    DISALLOW_COPY_AND_ASSIGN(Win32MapFile);
+    BOOL _Init(LPCWSTR Path);
+};
+```
+
+
+
+
 - [leveldb_handbook](https://leveldb-handbook.readthedocs.io/zh/latest/journal.html)
 - [Skip Lists](https://www.csee.umbc.edu/courses/341/fall01/Lectures/SkipLists/skip_lists/skip_lists.html)
 - [LevelDB源码剖析之基础部件-SkipList](https://www.jianshu.com/p/6624befde844)
