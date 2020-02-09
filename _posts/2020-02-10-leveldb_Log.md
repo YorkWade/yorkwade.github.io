@@ -51,7 +51,7 @@ leveldb使用[Windws内存映射文件](http://blog.tk-xiong.com/archives/933)�
     2、关闭文件映射内核对象<br>
     3、关闭文件内核对象<br>
 主要代码如下：
-```
+``` objc
 HANDLE hFile = CreateFile(...);
 HANDLE hFileMapping = CreateFileMapping(hFile, ...);
 PVOID pvFile = MapViewOfFile(hFileMapping, ...);
@@ -92,7 +92,7 @@ class Writer {
 };
 ```
 
-```
+```objc
 Status Writer::AddRecord(const Slice& slice) {
   const char* ptr = slice.data();
   size_t left = slice.size();
@@ -143,7 +143,7 @@ Status Writer::AddRecord(const Slice& slice) {
 ```
 
 
-```
+```objc
 Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
   assert(n <= 0xffff);  // Must fit in two bytes
   assert(block_offset_ + kHeaderSize + n <= kBlockSize);
@@ -173,7 +173,7 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
 ```
 
 leveldb使用文件映射来进行日志记录
-```
+```objc
 class Win32MapFile : public WritableFile
 {
 public:
