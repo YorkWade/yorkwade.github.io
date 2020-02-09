@@ -28,14 +28,8 @@ tags:
 chunk共有四种类型：full，first，middle，last。一条日志记录若只包含一个chunk，则该chunk的类型为full。若一条日志记录包含多个chunk，则这些chunk的第一个类型为first, 最后一个类型为last，中间包含大于等于0个middle类型的chunk。
 
 由于一个block的大小为32KiB，因此当一条日志文件过大时，会将第一部分数据写在第一个block中，且类型为first，若剩余的数据仍然超过一个block的大小，则第二部分数据写在第二个block中，类型为middle，最后剩余的数据写在最后一个block中，类型为last。
-![](https://leveldb-handbook.readthedocs.io/zh/latest/_images/journal.jpeg)
+![](https://izualzhy.cn/assets/images/leveldb/log_format.png)
 
-### 日志内容
-日志的内容为写入的batch编码后的信息。
-
-具体的格式为：
-
-![](https://leveldb-handbook.readthedocs.io/zh/latest/_images/journal_content.jpeg)
 
 
 ## 实现要点
@@ -215,3 +209,5 @@ private:
 
 - [leveldb_handbook](https://leveldb-handbook.readthedocs.io/zh/latest/journal.html)
 - [Windws内存映射文件](http://blog.tk-xiong.com/archives/933)
+- [leveldb笔记之2:日志](https://izualzhy.cn/leveldb-log)
+
