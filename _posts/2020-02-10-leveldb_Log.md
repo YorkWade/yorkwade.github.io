@@ -40,9 +40,8 @@ chunk共有四种类型：full，first，middle，last。一条日志记录若�
 
 ## 实现要点
 
-leveldb使用[Windws内存映射文件]（http://blog.tk-xiong.com/archives/933）来实现日志记录<br>
-来自Windows核心编程 – 第十七章 第三节 – 使用内存映射文件。<br>
-本小节会讲到如何使用内存映射文件，在最后会附上一个实例教程。<br>
+leveldb使用[Windws内存映射文件](http://blog.tk-xiong.com/archives/933)来实现（来自Windows核心编程 – 第十七章 第三节 – 使用内存映射文件）<br>
+
 要使用内存映射文件，需要执行下面三个步骤：<br>
     创建或打开一个文件内核对象，该对象标识了我们想要用作内存映射文件的那个磁盘文件。<br>
     创建一个文件映射内核对象来告诉系统文件的大小以及我们打算如何访问文件。<br>
@@ -51,7 +50,7 @@ leveldb使用[Windws内存映射文件]（http://blog.tk-xiong.com/archives/933�
     告诉系统从进程地址空间中取消对文件映射内核对象的映射<br>
     关闭文件映射内核对象<br>
     关闭文件内核对象<br>
-主要流程如下：
+主要代码如下：
 ```
 HANDLE hFile = CreateFile(...);
 HANDLE hFileMapping = CreateFileMapping(hFile, ...);
