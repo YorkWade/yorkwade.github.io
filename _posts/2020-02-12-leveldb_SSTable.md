@@ -14,7 +14,10 @@ tags:
 
 ## 设计要点
 
-### Data Block设计
+.sst文件，为若干个Data + CompressionType + CRC。其中每个Data是按照Data Block、Filter Block、MetaIndex Block、Index Block、Footer构成。从名字中可以看除，前面四种类型得结构，都是Block，有着相同得结构，只是内容存储得内容存储得不一样。最后一个Footer，非Block.记录着这个sst中索引得偏移，根据此信息，可以遍历查找到文件得Data Block。
+
+
+### Data Block
 很多key可能有重复的字节，比如“hellokitty”和”helloworld“是两个相邻的key，由于key中有公共的部分“hello”，因此，如果将公共的部分提取，可以有效的节省存储空间。
 
 处于这种考虑，LevelDb采用了前缀压缩(prefix-compressed)，由于LevelDb中key是按序排列的，这可以显著的减少空间占用。另外，每间隔16个keys(目前版本中options_->block_restart_interval默认为16)，LevelDb就取消使用前缀压缩，而是存储整个key(我们把存储整个key的点叫做重启点，实际也是跳跃表)。
@@ -59,7 +62,7 @@ struct BlockHandler {
 
 就目前的 LevelDB，这里面最多只有一个 Entry，那么它的结构非常简单，如下图所示
 
-### Index Block设计
+### Index Block
 典型的Data Block大小为4KB，而sstable文件的典型大小为2MB，也就说，一个sstable中，存在很多data block块，如果用户要查找某个key，该key到底位于which data block?
 
 如果没有index block，只有data block的起始位置和长度 （这个信息一定要有，否则无法确定查找，因为data block是变长的，并不是固定大小的），当用户查找某个key的时候，尽管是数据是有序的，可是还是不得不线性地找遍所有data block。任何一次查找要不得不读取2MB左右的内容，势必造成性能的恶化。
