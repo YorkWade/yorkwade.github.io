@@ -52,6 +52,8 @@ options.SetFilterPolicy(levigo.NewBloomFilter(10))
 
 这里的 2K 字节的间隔是严格的间隔，这样才可以通过 DataBlock 的偏移量和大小来快速定位到相应的布隆过滤器的位置 FilterOffset，再进一步获得相应的布隆过滤器位图数据。
 
+![](http://img.blog.itpub.net/blog/2019/02/19/0b6a648e2f7140ff.jpeg?x-oss-process=style/bb)
+
 ### MetaIndex Block 
 MetaIndexBlock 存储了前面一系列 FilterBlock 的元信息，它在结构上和 DataBlock 是一样的，只不过里面 Entry 存储的 Key 是带固定前缀的过滤器名称，Value 是对应的 FilterBlock 在文件中的偏移量和长度。
 ```obj
@@ -64,6 +66,8 @@ struct BlockHandler {
 ```
 
 就目前的 LevelDB，这里面最多只有一个 Entry，那么它的结构非常简单，如下图所示
+
+![](http://img.blog.itpub.net/blog/2019/02/19/c445b5bbefed183d.jpeg?x-oss-process=style/bb)
 
 ### Index Block
 典型的Data Block大小为4KB，而sstable文件的典型大小为2MB，也就说，一个sstable中，存在很多data block块，如果用户要查找某个key，该key到底位于which data block?
@@ -82,6 +86,7 @@ key = 分割key
 value = 上一个data block的（offset，size）
 ```
 通过这种手段，可以快速地定位出我们要找的key位于哪个data block(当然也可能压根不存在)
+![](http://img.blog.itpub.net/blog/2019/02/19/2b6d73036dc4a1d4.jpeg?x-oss-process=style/bb)
 
 ### Footer
 它的占用空间很小只有 48 字节，内部只存了几个字段。下面我们用伪代码来描述一下它的结构
@@ -108,6 +113,7 @@ db4775248b80fb57d0ce0768d85bcee39c230b61
 ```
 
 IndexBlock 和 MetaIndexBlock 都只有唯一的一个，所以分别使用一个 BlockHandler 结构来存储偏移量和长度。
+![](https://images2015.cnblogs.com/blog/384029/201612/384029-20161218115647542-1276452913.png)
 
 ### 物理结构
 除了 Footer 之外，其它部分都是 Block 结构，在名称上也都是以 Block 结尾。所谓的 Block 结构是指除了内部的有效数据外，还会有额外的压缩类型字段和校验码字段。
