@@ -77,6 +77,32 @@ value = 上一个data block的（offset，size）
 ```
 通过这种手段，可以快速地定位出我们要找的key位于哪个data block(当然也可能压根不存在)
 
+### Footer
+它的占用空间很小只有 48 字节，内部只存了几个字段。下面我们用伪代码来描述一下它的结构
+```obj
+// 定义了数据块的位置和大小
+struct BlockHandler {
+  varint offset;
+  varint size;
+}
+
+struct Footer {
+  BlockHandler metaIndexHandler;  // MetaIndexBlock的文件偏移量和长度
+  BlockHandler indexHandler; // IndexBlock的文件偏移量和长度
+  byte[n] padding;  // 内存垫片
+  int32 magicHighBits;  // 魔数后32位
+  int32 magicLowBits; // 魔数前32位
+}
+```
+
+Footer 结构的中间部分增加了内存垫片，其作用就是将 Footer 的空间撑到 48 字节。结构的尾部还有一个 64位的魔术数字 0xdb4775248b80fb57，如果文件尾部的 8 字节不是这个数字说明文件已经损坏。这个魔术数字的来源很有意思，它是下面返回的字符串的前64bit。
+```obj
+$ echo http://code.google.com/p/leveldb/ | sha1sum
+db4775248b80fb57d0ce0768d85bcee39c230b61
+```
+
+IndexBlock 和 MetaIndexBlock 都只有唯一的一个，所以分别使用一个 BlockHandler 结构来存储偏移量和长度。
+
 ### 物理结构
 除了 Footer 之外，其它部分都是 Block 结构，在名称上也都是以 Block 结尾。所谓的 Block 结构是指除了内部的有效数据外，还会有额外的压缩类型字段和校验码字段。
 ```obj
