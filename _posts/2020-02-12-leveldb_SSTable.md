@@ -13,10 +13,51 @@ tags:
 > leveldb 的SSTable的文件如何设计。
 
 ## 设计要点
+
 ### Data Block设计
 很多key可能有重复的字节，比如“hellokitty”和”helloworld“是两个相邻的key，由于key中有公共的部分“hello”，因此，如果将公共的部分提取，可以有效的节省存储空间。
 
 处于这种考虑，LevelDb采用了前缀压缩(prefix-compressed)，由于LevelDb中key是按序排列的，这可以显著的减少空间占用。另外，每间隔16个keys(目前版本中options_->block_restart_interval默认为16)，LevelDb就取消使用前缀压缩，而是存储整个key(我们把存储整个key的点叫做重启点，实际也是跳跃表)。
+
+### Filter Block
+如果没有开启布隆过滤器，FilterBlock 这个块就是不存在的。FilterBlock 在一个 SSTable 文件中可以存在多个，每个块存放一个过滤器数据。不过就目前 LevelDB 的实现来说它最多只能有一个过滤器，那就是布隆过滤器。
+
+布隆过滤器用于加快 SSTable 磁盘文件的 Key 定位效率。如果没有布隆过滤器，它需要对 SSTable 进行二分查找，Key 如果不在里面，就需要进行多次 IO 读才能确定，查完了才发现原来是一场空。布隆过滤器的作用就是避免在 Key 不存在的时候浪费 IO 操作。通过查询布隆过滤器可以一次性知道 Key 有没有可能在里面。
+
+单个布隆过滤器中存放的是一个定长的位图数组，该位图数组中存放了若干个 Key 的指纹信息。这若干个 Key 来源于 DataBlock 中连续的一个范围。FilterBlock 块中存在多个连续的布隆过滤器位图数组，每个数组负责指纹化 SSTable 中的一部分数据。
+```obj
+struct FilterEntry {
+  byte[] rawbits;
+}
+
+struct FilterBlock {
+  FilterEntry[n] filterEntries;
+  int32[n] filterEntryOffsets;
+  int32 offsetArrayOffset;
+  int8 baseLg;  // 分割系数
+}
+```
+
+其中 baseLg 默认 11，表示每隔 2K 字节（2<<11）的 DataBlock 数据（压缩后），就开启一个布隆过滤器来容纳这一段数据中 Key 值的指纹。如果某个 Value 值过大，以至于超出了 2K 字节，那么相应的布隆过滤器里面就只有 1 个 Key 值的指纹。每个 Key 对应的指纹空间在打开数据库时指定。
+
+// 每个 Key 占用 10bit 存放指纹信息
+options.SetFilterPolicy(levigo.NewBloomFilter(10))
+
+
+这里的 2K 字节的间隔是严格的间隔，这样才可以通过 DataBlock 的偏移量和大小来快速定位到相应的布隆过滤器的位置 FilterOffset，再进一步获得相应的布隆过滤器位图数据。
+
+### MetaIndex Block 
+MetaIndexBlock 存储了前面一系列 FilterBlock 的元信息，它在结构上和 DataBlock 是一样的，只不过里面 Entry 存储的 Key 是带固定前缀的过滤器名称，Value 是对应的 FilterBlock 在文件中的偏移量和长度。
+```obj
+key = "filter." + filterName
+// value 定义了数据块的位置和大小
+struct BlockHandler {
+  varint offset;
+  varint size;
+}
+```
+
+就目前的 LevelDB，这里面最多只有一个 Entry，那么它的结构非常简单，如下图所示
 
 ### Index Block设计
 典型的Data Block大小为4KB，而sstable文件的典型大小为2MB，也就说，一个sstable中，存在很多data block块，如果用户要查找某个key，该key到底位于which data block?
@@ -36,7 +77,17 @@ value = 上一个data block的（offset，size）
 ```
 通过这种手段，可以快速地定位出我们要找的key位于哪个data block(当然也可能压根不存在)
 
-	
+### 物理结构
+除了 Footer 之外，其它部分都是 Block 结构，在名称上也都是以 Block 结尾。所谓的 Block 结构是指除了内部的有效数据外，还会有额外的压缩类型字段和校验码字段。
+```obj
+struct Block {
+  byte[] data;
+  int8 compressType;
+  int32 crcValue;
+}
+```
+
+每一个 Block 尾部都会有压缩类型和循环冗余校验码（crcValue），这会要占去 5 字节。如果是压缩类型，块内的数据 data 会被压缩。校验码会针对压缩和的数据和压缩类型字段一起计算循环冗余校验和。压缩算法默认是 snappy ，校验算法是 crc32。
 	
 >参考：
 - [SSTable之1](https://blog.csdn.net/sparkliang/article/details/8635821)
