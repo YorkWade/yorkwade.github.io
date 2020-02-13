@@ -113,7 +113,8 @@ db4775248b80fb57d0ce0768d85bcee39c230b61
 ```
 
 IndexBlock 和 MetaIndexBlock 都只有唯一的一个，所以分别使用一个 BlockHandler 结构来存储偏移量和长度。
-![](https://images2015.cnblogs.com/blog/384029/201612/384029-20161218115647542-1276452913.png)
+
+![](http://img.blog.itpub.net/blog/2019/02/19/0b6a648e2f7140ff.jpeg?x-oss-process=style/bb)
 
 ### 物理结构
 除了 Footer 之外，其它部分都是 Block 结构，在名称上也都是以 Block 结尾。所谓的 Block 结构是指除了内部的有效数据外，还会有额外的压缩类型字段和校验码字段。
