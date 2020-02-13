@@ -20,3 +20,4 @@ tags:
 - [SSTable之2](https://blog.csdn.net/sparkliang/article/details/8653370)
 - [SSTable之3](https://blog.csdn.net/sparkliang/article/details/8681759)
 - [SSTable之4](https://blog.csdn.net/sparkliang/article/details/8708892)
+- [深入 LevelDB 数据文件 SSTable 的结构](http://blog.itpub.net/31561269/viewspace-2636368/)
