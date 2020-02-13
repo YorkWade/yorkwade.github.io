@@ -21,6 +21,7 @@ tags:
 很多key可能有重复的字节，比如“hellokitty”和”helloworld“是两个相邻的key，由于key中有公共的部分“hello”，因此，如果将公共的部分提取，可以有效的节省存储空间。
 
 处于这种考虑，LevelDb采用了**前缀压缩(prefix-compressed)**，由于LevelDb中key是按序排列的，这可以显著的减少空间占用。另外，每间隔16个keys(目前版本中options_->block_restart_interval默认为16)，LevelDb就取消使用前缀压缩，而是存储整个key(我们把存储整个key的点叫做重启点，实际也是跳跃表)。
+
 ![](https://images2015.cnblogs.com/blog/384029/201612/384029-20161218120252261-1805212835.png)
 ![](https://images2015.cnblogs.com/blog/384029/201612/384029-20161218120307292-925209927.png)
 
