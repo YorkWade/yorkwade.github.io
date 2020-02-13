@@ -15,7 +15,7 @@ tags:
 ## 设计要点
 
 .sst文件，为若干个Data + CompressionType + CRC。其中每个Data是按照Data Block、Filter Block、MetaIndex Block、Index Block、Footer构成。从名字中可以看除，前面四种类型得结构，都是Block，有着相同得结构，只是内容存储得内容存储得不一样。最后一个Footer，非Block.记录着这个sst中索引得偏移，根据此信息，可以遍历查找到文件得Data Block。
-
+![](http://img.blog.itpub.net/blog/2019/02/19/5a2031cee73c91fa.jpeg?x-oss-process=style/bb)
 
 ### Data Block
 很多key可能有重复的字节，比如“hellokitty”和”helloworld“是两个相邻的key，由于key中有公共的部分“hello”，因此，如果将公共的部分提取，可以有效的节省存储空间。
