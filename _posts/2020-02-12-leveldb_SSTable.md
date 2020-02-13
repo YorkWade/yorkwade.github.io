@@ -114,7 +114,68 @@ struct Block {
 ```
 
 每一个 Block 尾部都会有压缩类型和循环冗余校验码（crcValue），这会要占去 5 字节。如果是压缩类型，块内的数据 data 会被压缩。校验码会针对压缩和的数据和压缩类型字段一起计算循环冗余校验和。压缩算法默认是 snappy ，校验算法是 crc32。
-	
+
+
+## 源码
+源码基本按照上述规则填写，并无技巧。最终合并各个字段，写人文件得流程为如下代码：
+```obj
+Status TableBuilder::Finish() {
+  Rep* r = rep_;
+  Flush();
+  assert(!r->closed);
+  r->closed = true;
+
+  BlockHandle filter_block_handle, metaindex_block_handle, index_block_handle;
+
+  // Write filter block
+  if (ok() && r->filter_block != NULL) {
+    WriteRawBlock(r->filter_block->Finish(), kNoCompression,
+                  &filter_block_handle);
+  }
+
+  // Write metaindex block
+  if (ok()) {
+    BlockBuilder meta_index_block(&r->options);
+    if (r->filter_block != NULL) {
+      // Add mapping from "filter.Name" to location of filter data
+      std::string key = "filter.";
+      key.append(r->options.filter_policy->Name());
+      std::string handle_encoding;
+      filter_block_handle.EncodeTo(&handle_encoding);
+      meta_index_block.Add(key, handle_encoding);
+    }
+
+    // TODO(postrelease): Add stats and other meta blocks
+    WriteBlock(&meta_index_block, &metaindex_block_handle);
+  }
+
+  // Write index block
+  if (ok()) {
+    if (r->pending_index_entry) {
+      r->options.comparator->FindShortSuccessor(&r->last_key);
+      std::string handle_encoding;
+      r->pending_handle.EncodeTo(&handle_encoding);
+      r->index_block.Add(r->last_key, Slice(handle_encoding));
+      r->pending_index_entry = false;
+    }
+    WriteBlock(&r->index_block, &index_block_handle);
+  }
+
+  // Write footer
+  if (ok()) {
+    Footer footer;
+    footer.set_metaindex_handle(metaindex_block_handle);
+    footer.set_index_handle(index_block_handle);
+    std::string footer_encoding;
+    footer.EncodeTo(&footer_encoding);
+    r->status = r->file->Append(footer_encoding);
+    if (r->status.ok()) {
+      r->offset += footer_encoding.size();
+    }
+  }
+  return r->status;
+}
+```
 >参考：
 - [SSTable之1](https://blog.csdn.net/sparkliang/article/details/8635821)
 - [SSTable之2](https://blog.csdn.net/sparkliang/article/details/8653370)
