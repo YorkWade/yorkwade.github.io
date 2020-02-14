@@ -14,7 +14,7 @@ tags:
 
 ## 设计要点
 
-.sst文件，按照Data Block、Filter Block、MetaIndex Block、Index Block、Footer构成。从名字中可以看出，前面四种类型得结构，都是Block，有着相同得结构，只是内容存储得内容存储得不一样。在最终存储时，每条Block后，增加CompressionType+CRC。 最后一个Footer，非Block，总共48字节，记录着这个sst中索引得偏移，根据此信息，可以遍历查找到文件得Data Block。
+.sst文件，按照Data Block、Filter Block、MetaIndex Block、Index Block、Footer构成。从名字中可以看出，前面四种类型得结构，都是Block，有着相同得结构，Data+CompressionType+CRC,只是内容存储得内容存储得不一样。 最后一个Footer，非Block，总共48字节，记录着这个sst中索引得偏移，根据此信息，可以遍历查找到文件得Data Block。
 ![](http://img.blog.itpub.net/blog/2019/02/19/5a2031cee73c91fa.jpeg?x-oss-process=style/bb)
 
 ### Data Block
