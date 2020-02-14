@@ -55,6 +55,8 @@ options.SetFilterPolicy(levigo.NewBloomFilter(10))
 
 ![](http://img.blog.itpub.net/blog/2019/02/19/0b6a648e2f7140ff.jpeg?x-oss-process=style/bb)
 
+Filter Block相关源码，参考[FilterPolicy&Bloom之2](https://blog.csdn.net/sparkliang/article/details/8755499)
+
 ### MetaIndex Block 
 MetaIndexBlock 存储了前面一系列 FilterBlock 的元信息，它在结构上和 DataBlock 是一样的，只不过里面 Entry 存储的 Key 是带固定前缀的过滤器名称，Value 是对应的 FilterBlock 在文件中的偏移量和长度。
 ```obj
@@ -195,5 +197,5 @@ Status TableBuilder::Finish() {
 - [SSTable之2](https://blog.csdn.net/sparkliang/article/details/8653370)
 - [SSTable之3](https://blog.csdn.net/sparkliang/article/details/8681759)
 - [SSTable之4](https://blog.csdn.net/sparkliang/article/details/8708892)
-- [SSTable之4](https://blog.csdn.net/sparkliang/article/details/8755499)
+- [FilterPolicy&Bloom之2](https://blog.csdn.net/sparkliang/article/details/8755499)
 - [深入 LevelDB 数据文件 SSTable 的结构](http://blog.itpub.net/31561269/viewspace-2636368/)
