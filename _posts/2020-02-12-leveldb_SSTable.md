@@ -55,6 +55,14 @@ options.SetFilterPolicy(levigo.NewBloomFilter(10))
 
 ![](http://img.blog.itpub.net/blog/2019/02/19/0b6a648e2f7140ff.jpeg?x-oss-process=style/bb)
 
+Filter Block也就是前面sstable中的meta block，位于data block之后。
+如果打开db时指定了FilterPolicy，那么每个创建的table都会保存一个filter block，table中的metaindex就包含一条从”filter.<N>到filter block的BlockHandle的映射，其中”<N>”是filter policy的Name()函数返回的string。
+Filter block存储了一连串的filter值，其中第i个filter保存的是block b中所有的key通过FilterPolicy::CreateFilter()计算得到的结果，block b在sstable文件中的偏移满足[ i*base ... (i+1)*base-1 ]。
+
+当前base是2KB，举个例子，如果block X和Y在sstable的起始位置都在[0KB, 2KB-1]中，X和Y中的所有key调用FilterPolicy::CreateFilter()的计算结果都将生产到同一个filter中，而且该filter是filter block的第一个filter。
+
+Filter block也是一个block，其格式遵从block的基本格式：|block data| type | crc32|。
+
 Filter Block相关源码，参考[FilterPolicy&Bloom之2](https://blog.csdn.net/sparkliang/article/details/8755499)
 
 ### MetaIndex Block 
