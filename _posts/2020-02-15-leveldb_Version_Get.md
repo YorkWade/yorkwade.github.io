@@ -12,9 +12,17 @@ tags:
 
 
 
+level 0的数据是Imuable memtable直接dump到磁盘的，所以文件与文件之间的key有可能重叠的。而level n（n>0）中每个sst文件之间key是不重叠的，且key在level中是全局有序的（注意是该level中）
+
+那么在每一层中是如何查找key的呢？答案很简单，不外乎两个步骤：<br>
+
+    找到所有可能含有该key的文件列表fileList；<br>
+    遍历fileList查找key；<br>
+
+第2步就是读取文件内容找出key而已，那么1是如何实现的呢？这里我们有必要复习一下前面的内容。我们除了sst文件（实际数据文件），leveldb还有manifest文件，该文件保存了每个sst文件在哪一层，最小key是啥，最大key是啥？所以：
+我们通过读取manifest文件就能知道key有可能在哪一个sst文件中！
 
 
-相较与OC来说更易读了：
 
 ```objc
 let dispatch_time = dispatch_time(DISPATCH_TIME_NOW, Int64(60 * NSEC_PER_SEC))
@@ -208,3 +216,5 @@ Status Version::Get(const ReadOptions& options,
 
 ### 参考 
 - [Leveldb源码分析--16](https://blog.csdn.net/sparkliang/article/details/8820517)
+- [leveldb源码解析之三Get实现](https://www.jianshu.com/p/d1e7efacc394)
+
