@@ -435,6 +435,7 @@ uint32_t Hash(const char* data, size_t n, uint32_t seed) {
 
 - [leveldb中的LRUCache设计](https://bean-li.github.io/leveldb-LRUCache/)
 - [leveldb源码分析1](https://blog.csdn.net/sparkliang/article/details/8567602)
+- [leveldb源码解析之三Get实现](https://www.jianshu.com/p/d1e7efacc394)
 
 
 
