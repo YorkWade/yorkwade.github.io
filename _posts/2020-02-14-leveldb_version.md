@@ -20,7 +20,7 @@ tags:
  
  leveldb使用版本控制（元数据管理）进行支持的。外部用户可以以快照的方式使用文件和数据。
 ### Version
-LeveDB用Version表示一个版本的元信息，Version中主要包括一个FileMetaData指针的二维数组，分层记录了所有的SST文件信息。FileMetaData数据结构用来维护一个文件的元信息，包括文件大小，文件编号，最大最小值，引用计数等，其中引用计数记录了被不同的Version引用的个数，保证被引用中的文件不会被删除。除此之外，Version中还记录了触发Compaction相关的状态信息，这些信息会在读写请求或Compaction过程中被更新。通过庖丁解LevelDB之概览中对Compaction过程的描述可以知道在CompactMemTable和BackgroundCompaction过程中会导致新文件的产生和旧文件的删除。每当这个时候都会有一个新的对应的Version生成，并插入VersionSet链表头部。
+LeveDB用Version表示一个版本的元信息，Version中主要包括一个FileMetaData指针的二维数组，分层记录了所有的SST文件信息。FileMetaData数据结构用来维护一个文件的元信息，包括文件大小，文件编号，最大最小值，引用计数等，其中引用计数记录了被不同的Version引用的个数，保证被引用中的文件不会被删除。除此之外，Version中还记录了触发Compaction相关的状态信息，这些信息会在读写请求或Compaction过程中被更新。每当这个时候都会有一个新的对应的Version生成，并插入VersionSet链表头部。
 ```obj
 class Version {
  private:
@@ -90,6 +90,44 @@ VersionSet Version 示意图
 ### VersionEidt
 
 为了避免进程崩溃或机器宕机导致的数据丢失，LevelDB需要将元信息数据持久化到磁盘，承担这个任务的就是Manifest文件。可以看出每当有新的Version产生都需要更新Manifest，很自然的发现这个新增数据正好对应于VersionEdit内容，也就是说Manifest文件记录的是一组VersionEdit值，在Manifest中的一次增量内容称作一个Block，其内容如下：
+```obj
+Manifest Block := N * Item
+Item := [kComparator] comparator
+		or [kLogNumber] 64位log_number
+		or [kPrevLogNumber] 64位pre_log_number
+		or [kNextFileNumber] 64位next_file_number_
+		or [kLastSequence] 64位last_sequence_
+		or [kCompactPointer] 32位level + 变长的key
+		or [kDeletedFile] 32位level + 64位文件号
+		or [kNewFile] 32位level + 64位 文件号 + 64位文件长度 + smallest key + largest key
+```
+```obj
+class VersionEdit {
+ public:
+ ...
+
+ private:
+  friend class VersionSet;
+
+  typedef std::set< std::pair<int, uint64_t> > DeletedFileSet;
+
+  std::string comparator_;
+  uint64_t log_number_;
+  uint64_t prev_log_number_;
+  uint64_t next_file_number_;
+  SequenceNumber last_sequence_;
+  bool has_comparator_;
+  bool has_log_number_;
+  bool has_prev_log_number_;
+  bool has_next_file_number_;
+  bool has_last_sequence_;
+
+  std::vector< std::pair<int, InternalKey> > compact_pointers_;
+  DeletedFileSet deleted_files_;
+  std::vector< std::pair<int, FileMetaData> > new_files_;
+};
+```
+可以看出恢复元信息的过程也变成了依次应用VersionEdit的过程，这个过程中有大量的中间Version产生，但这些并不是我们所需要的。LevelDB引入VersionSet::Builder来避免这种中间变量，方法是先将所有的VersoinEdit内容整理到VersionBuilder中，然后一次应用产生最终的Version，这种实现上的优化如下图所示：
 
 ![](https://image-static.segmentfault.com/600/545/600545784-59391361dc06d_articlex)
 
