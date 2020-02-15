@@ -131,8 +131,62 @@ class VersionEdit {
 
 ![](https://image-static.segmentfault.com/600/545/600545784-59391361dc06d_articlex)
 
+那么将如何从旧版本生成新版本了？看下下段VersionSet::LogAndApply的代码：
+```obj
+Status VersionSet::LogAndApply(VersionEdit* edit, port::Mutex* mu) {
+  ...
+  Version* v = new Version(this);
+  {
+    Builder builder(this, current_);
+    builder.Apply(edit);  //将版本的变化即VersionEdit应用到VersionSet的compact_pointers, deleted_files及added_files。
+    builder.SaveTo(v);//根据VersionSet中的deleted_files以及added_files, 从base Version(即current_)生成新Version的数据内容
+  }
+  Finalize(v);
+  ...
+}
+```
+
+```obj
+void SaveTo(Version* v) {
+    BySmallestKey cmp;
+    cmp.internal_comparator = &vset_->icmp_;
+    for (int level = 0; level < config::kNumLevels; level++) {
+      // Merge the set of added files with the set of pre-existing files.
+      // Drop any deleted files.  Store the result in *v.
+      const std::vector<FileMetaData*>& base_files = base_->files_[level];//一个根据根据file的最小key值排序的有序vector
+      std::vector<FileMetaData*>::const_iterator base_iter = base_files.begin();
+      std::vector<FileMetaData*>::const_iterator base_end = base_files.end();
+      const FileSet* added = levels_[level].added_files; //FileSet是一个根据file的最小key值排序的有序set
+      v->files_[level].reserve(base_files.size() + added->size());
+　　　　　　//如下过程类似于归并排序
+　　　　　　//base files:{2}, {5}, {7}
+          //add files:{1}, {6}
+          //过程就是{1}->files,  {2}, {5}->files, {6}->files, {7}->files.
+          //当然，上步骤的过程中，还需要判断下该file是否能add到files中去，即MaybeAddFile（不在删除files里即可添加）
+      for (FileSet::const_iterator added_iter = added->begin();
+           added_iter != added->end();
+           ++added_iter) {
+        // Add all smaller files listed in base_
+        for (std::vector<FileMetaData*>::const_iterator bpos
+                 = std::upper_bound(base_iter, base_end, *added_iter, cmp);
+             base_iter != bpos;
+             ++base_iter) {
+          MaybeAddFile(v, level, *base_iter);
+        }
+
+        MaybeAddFile(v, level, *added_iter);
+      }
+
+      // Add remaining base files
+      for (; base_iter != base_end; ++base_iter) {
+        MaybeAddFile(v, level, *base_iter);
+      }
+
+    }
+  }
+```
 
 ## 参考
 - [庖丁解LevelDB之版本控制](https://catkang.github.io/2017/02/03/leveldb-version.html)
 - [Leveldb二三事](https://segmentfault.com/a/1190000009707717?utm_source=tag-newest)
--
+- [leveldb version机制](https://www.cnblogs.com/ewouldblock7/p/3721088.html)
