@@ -16,19 +16,13 @@ level 0的数据是Imuable memtable直接dump到磁盘的，所以文件与文�
 
 那么在每一层中是如何查找key的呢？答案很简单，不外乎两个步骤：<br>
 
-    找到所有可能含有该key的文件列表fileList；
-    遍历fileList查找key；
+    1、找到所有可能含有该key的文件列表fileList；
+    2、遍历fileList查找key；
 
 第2步就是读取文件内容找出key而已，那么1是如何实现的呢？这里我们有必要复习一下前面的内容。我们除了sst文件（实际数据文件），leveldb还有manifest文件，该文件保存了每个sst文件在哪一层，最小key是啥，最大key是啥？所以：
 我们通过读取manifest文件就能知道key有可能在哪一个sst文件中！
 
-
-
-```objc
-let dispatch_time = dispatch_time(DISPATCH_TIME_NOW, Int64(60 * NSEC_PER_SEC))
-```
-
-
+leveldb读流程主要如下：
 
 ```obj
 1、获取版本号，只读取该版本号之前的数据；
@@ -205,12 +199,7 @@ Status Version::Get(const ReadOptions& options,
 ```
 
 
-```obj
-1、获取版本号，只读取该版本号之前的数据；
-2、在memtable中查找
-3、在Imuable memtable中查找
-4、在sstable（磁盘文件）中查找
-```
+
 
 ## 业务流程
 ![](https://images2017.cnblogs.com/blog/1183530/201801/1183530-20180116202929646-1073704541.png)
