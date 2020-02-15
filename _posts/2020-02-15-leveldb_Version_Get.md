@@ -34,7 +34,7 @@ let dispatch_time = dispatch_time(DISPATCH_TIME_NOW, Int64(60 * NSEC_PER_SEC))
 1、获取版本号，只读取该版本号之前的数据；
 2、在memtable中查找
 3、在Imuable memtable中查找
-4、在sstable（磁盘文件）中查找
+4、在sstable（磁盘文件）中查找（先在TableCache中查找）
 ```
 
 ```objc
