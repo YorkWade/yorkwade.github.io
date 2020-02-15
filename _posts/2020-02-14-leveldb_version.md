@@ -46,6 +46,8 @@ VersionSet是一个Version构成的双向链表，这些Version按时间顺序�
 
 ![](https://img-blog.csdn.net/20150514163342237?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvdTAxMjY1ODM0Ng==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center)
 
+![](https://image-static.segmentfault.com/515/820/515820936-59391361c779e_articlex)
+
 VersionSet Version 示意图
 
 通过上面的描述可以看出，相邻Version之间的不同仅仅是一些文件被删除另一些文件被删除。也就是说将文件变动应用在旧的Version上可以得到新的Version，这也就是Version产生的方式。LevelDB用VersionEdit来表示这种相邻Version的差值。
@@ -53,6 +55,9 @@ VersionSet Version 示意图
 VersionEidt
 
 为了避免进程崩溃或机器宕机导致的数据丢失，LevelDB需要将元信息数据持久化到磁盘，承担这个任务的就是Manifest文件。可以看出每当有新的Version产生都需要更新Manifest，很自然的发现这个新增数据正好对应于VersionEdit内容，也就是说Manifest文件记录的是一组VersionEdit值，在Manifest中的一次增量内容称作一个Block，其内容如下：
+
+![](https://image-static.segmentfault.com/600/545/600545784-59391361dc06d_articlex)
+
 
 ## 参考
 - [庖丁解LevelDB之版本控制](https://catkang.github.io/2017/02/03/leveldb-version.html)
