@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      leveldb之Version
+title:      leveldb之Get
 subtitle:   
 date:       2020-02-15
 author:     BY
@@ -16,8 +16,8 @@ level 0的数据是Imuable memtable直接dump到磁盘的，所以文件与文�
 
 那么在每一层中是如何查找key的呢？答案很简单，不外乎两个步骤：<br>
 
-    找到所有可能含有该key的文件列表fileList；<br>
-    遍历fileList查找key；<br>
+    找到所有可能含有该key的文件列表fileList；
+    遍历fileList查找key；
 
 第2步就是读取文件内容找出key而已，那么1是如何实现的呢？这里我们有必要复习一下前面的内容。我们除了sst文件（实际数据文件），leveldb还有manifest文件，该文件保存了每个sst文件在哪一层，最小key是啥，最大key是啥？所以：
 我们通过读取manifest文件就能知道key有可能在哪一个sst文件中！
@@ -92,7 +92,8 @@ Status DBImpl::Get(const ReadOptions& options,
   return s;
 }
 ```
-
+Version是管理某个版本的所有sstable的类，就其导出接口而言，无非是遍历sstable，查找k/v。以及为compaction做些事情，给定range，检查重叠情况。
+而它不会修改它管理的sstable这些文件，对这些文件而言它是只读操作接口
 ```objc
 
 Status Version::Get(const ReadOptions& options,
@@ -184,7 +185,7 @@ Status Version::Get(const ReadOptions& options,
       }
       switch (saver.state) { //查找结果返回!
         case kNotFound:
-          break;      // Keep searching in other files
+          break;      // Keep searching in other files继续查找，知道找出的所有文件都查找完
         case kFound:
           return s;
         case kDeleted:
@@ -216,5 +217,6 @@ Status Version::Get(const ReadOptions& options,
 
 ### 参考 
 - [Leveldb源码分析--16](https://blog.csdn.net/sparkliang/article/details/8820517)
+- [Leveldb源码分析--17](https://blog.csdn.net/sparkliang/article/details/8914374)
 - [leveldb源码解析之三Get实现](https://www.jianshu.com/p/d1e7efacc394)
 
