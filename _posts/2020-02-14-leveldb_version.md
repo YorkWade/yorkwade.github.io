@@ -44,6 +44,39 @@ class Version {
 ### VersionSet
 VersionSet是一个Version构成的双向链表，这些Version按时间顺序先后产生，记录了当时的元信息，链表头指向当前最新的Version，同时维护了每个Version的引用计数，被引用中的Version不会被删除，其对应的SST文件也因此得以保留，通过这种方式，使得LevelDB可以在一个稳定的快照视图上访问文件。VersionSet中除了Version的双向链表外还会记录一些如LogNumber，Sequence，下一个SST文件编号的状态信息。
 
+```obj
+class VersionSet {
+ public:
+  ...
+ private:
+  class Builder;
+ 
+  void SetupOtherInputs(Compaction* c);
+  Status WriteSnapshot(log::Writer* log);
+  void AppendVersion(Version* v);
+ 
+  Env* const env_;
+  const std::string dbname_;
+  const Options* const options_;
+  TableCache* const table_cache_;//缓存部分SSTable
+  const InternalKeyComparator icmp_;
+  uint64_t next_file_number_;   //下一个要生成的文件的编号
+  uint64_t manifest_file_number_;
+  uint64_t last_sequence_;
+  uint64_t log_number_;
+  uint64_t prev_log_number_;  // 0 or backing store for memtable being compacted
+ 
+  // Opened lazily
+  WritableFile* descriptor_file_;//数据库的Manifest清单文件
+  log::Writer* descriptor_log_;//用于写Manifest文件
+  Version dummy_versions_;  // 所有Version形成的双向链表的头部
+  Version* current_;        // == dummy_versions_.prev_，双向链表的尾部，即最新的Version
+ 
+  std::string compact_pointer_[config::kNumLevels];//每一level下次要执行合并操作的起始Key值
+};
+
+```
+
 ![](https://img-blog.csdn.net/20150514163342237?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvdTAxMjY1ODM0Ng==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center)
 
 ![](https://image-static.segmentfault.com/515/820/515820936-59391361c779e_articlex)
