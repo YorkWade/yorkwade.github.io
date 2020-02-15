@@ -11,7 +11,7 @@ tags:
 ---
 
 
-## 前言
+## leveldb版本控制原理
 每次leveldb后台进行compact时， 会造成sst文件的变化，此时会存在下面问题
 
     leveldb 怎么管理因compact带来的文件变化？
