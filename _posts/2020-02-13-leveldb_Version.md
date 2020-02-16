@@ -26,7 +26,7 @@ VersionEdit记录了Version之间的变化，相当于delta增量，表示又增
 另外，MANIFEST文件组织是以VersionEdit的形式写入的，它本身是一个log文件格式，采用log::Writer/Reader的方式读写，一个VersionEdit就是一条log record。
 
 ### Version
-LeveDB用Version表示一个版本的元信息，Version中主要包括一个FileMetaData指针的二维数组，分层记录了所有的SST文件信息。FileMetaData数据结构用来维护一个文件的元信息，包括文件大小，文件编号，最大最小值，引用计数等，其中引用计数记录了被不同的Version引用的个数，保证被引用中的文件不会被删除。除此之外，Version中还记录了触发Compaction相关的状态信息，这些信息会在读写请求或Compaction过程中被更新。每当这个时候都会有一个新的对应的Version生成，并插入VersionSet链表头部。Version通过Version* prev和*next指针构成了一个Version双向循环链表，表头指针则在VersionSet中（初始都指向自己）。
+LeveDB用Version表示当前磁盘及内存中的所有文件元信息。Version中主要包括一个FileMetaData指针的二维数组，分层记录了所有的SST文件信息。FileMetaData数据结构用来维护一个文件的元信息，包括文件大小，文件编号，最大最小值，引用计数等，其中引用计数记录了被不同的Version引用的个数，保证被引用中的文件不会被删除。除此之外，Version中还记录了触发Compaction相关的状态信息，这些信息会在读写请求或Compaction过程中被更新。每当这个时候都会有一个新的对应的Version生成，并插入VersionSet链表头部。Version通过Version* prev和*next指针构成了一个Version双向循环链表，表头指针则在VersionSet中（初始都指向自己）。
 ```obj
 class Version {
  private:
@@ -140,9 +140,51 @@ Status VersionSet::LogAndApply(VersionEdit* edit, port::Mutex* mu) {
     builder.SaveTo(v);//根据VersionSet中的deleted_files以及added_files, 从base Version(即current_)生成新Version的数据内容
   }
   Finalize(v);
-  ...
+  
+   // Initialize new descriptor log file if necessary by creating
+  // a temporary file that contains a snapshot of the current version.
+  std::string new_manifest_file;
+  Status s;
+  if (descriptor_log_ == NULL) {//如果MANIFEST文件指针不存在，就创建并初始化一个新的MANIFEST文件。这只会发生在第一次打开数据库时。
+    // No reason to unlock *mu here since we only hit this path in the
+    // first call to LogAndApply (when opening the database).
+    assert(descriptor_file_ == NULL);
+    new_manifest_file = DescriptorFileName(dbname_, manifest_file_number_);
+    edit->SetNextFile(next_file_number_);
+    s = env_->NewWritableFile(new_manifest_file, &descriptor_file_);
+    if (s.ok()) {
+      descriptor_log_ = new log::Writer(descriptor_file_);
+      s = WriteSnapshot(descriptor_log_);//这个MANIFEST文件保存了current version的快照。
+    }
+  }
+   // Unlock during expensive MANIFEST log write
+  {
+    mu->Unlock();
+
+    // Write new record to MANIFEST log
+    if (s.ok()) {
+      std::string record;
+      edit->EncodeTo(&record);
+      s = descriptor_log_->AddRecord(record);//将VersionEdit写入MANIFEST中
+      if (s.ok()) {
+        s = descriptor_file_->Sync();
+      }
+      if (!s.ok()) {
+        Log(options_->info_log, "MANIFEST write: %s\n", s.ToString().c_str());
+      }
+    }
+
+    // If we just created a new descriptor file, install it by writing a
+    // new CURRENT file that points to it.
+    if (s.ok() && !new_manifest_file.empty()) {
+      s = SetCurrentFile(env_, dbname_, manifest_file_number_);//设置成Current
+    }
+
+    mu->Lock();
 }
 ```
+
+LogAndApply。这个函数主要是当一个Version结束时，将这个Version所做的修改(VersionEdit里)保存到一个新的Version中(VersionSet以后就使用这个Version了)，然后持久化到MANIFEST文件中(WriteSnapshot或者直接进行log record)
 
 ```obj
 void SaveTo(Version* v) {
