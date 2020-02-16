@@ -90,7 +90,9 @@ VersionSet Version 示意图
 ### VersionEidt
 
 为了避免进程崩溃或机器宕机导致的数据丢失，LevelDB需要将元信息数据持久化到磁盘，承担这个任务的就是Manifest文件。可以看出每当有新的Version产生都需要更新Manifest，很自然的发现这个新增数据正好对应于VersionEdit内容，也就是说Manifest文件记录的是一组VersionEdit值，在Manifest中的一次增量内容称作一个Block，其内容如下：
+
 ![](https://img-my.csdn.net/uploads/201304/09/1365478054_1495.JPG)
+
 ```obj
 class VersionEdit {
  public:
