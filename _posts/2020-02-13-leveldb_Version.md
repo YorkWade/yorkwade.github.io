@@ -18,9 +18,15 @@ tags:
     当db关闭后重新打开时，如何恢复状态？
     如何解决版本销毁文件变化和已经获取过的迭代器的冲突？在查询数据的时候是否会存在被查文件被删掉的可能呢？
  
- leveldb使用版本控制（元数据管理）进行支持的。外部用户可以以快照的方式使用文件和数据。
+当执行一次compaction后，Leveldb将在当前版本基础上创建一个新版本，当前版本就变成了历史版本。还有，如果你创建了一个Iterator，那么该Iterator所依附的版本将不会被leveldb删除。
+在leveldb中，Version就代表了一个版本，它包括当前磁盘及内存中的所有文件信息。在所有的version中，只有一个是CURRENT。
+VersionSet是所有Version的集合，这是个version的管理机构。
+VersionEdit记录了Version之间的变化，相当于delta增量，表示又增加了多少文件，删除了文件。也就是说：Version0 + VersionEdit --> Version1。
+每次文件有变动时，leveldb就把变动记录到一个VersionEdit变量中，然后通过VersionEdit把变动应用到current version上，并把current version的快照，也就是db元信息保存到MANIFEST文件中。
+另外，MANIFEST文件组织是以VersionEdit的形式写入的，它本身是一个log文件格式，采用log::Writer/Reader的方式读写，一个VersionEdit就是一条log record。
+
 ### Version
-LeveDB用Version表示一个版本的元信息，Version中主要包括一个FileMetaData指针的二维数组，分层记录了所有的SST文件信息。FileMetaData数据结构用来维护一个文件的元信息，包括文件大小，文件编号，最大最小值，引用计数等，其中引用计数记录了被不同的Version引用的个数，保证被引用中的文件不会被删除。除此之外，Version中还记录了触发Compaction相关的状态信息，这些信息会在读写请求或Compaction过程中被更新。每当这个时候都会有一个新的对应的Version生成，并插入VersionSet链表头部。
+LeveDB用Version表示一个版本的元信息，Version中主要包括一个FileMetaData指针的二维数组，分层记录了所有的SST文件信息。FileMetaData数据结构用来维护一个文件的元信息，包括文件大小，文件编号，最大最小值，引用计数等，其中引用计数记录了被不同的Version引用的个数，保证被引用中的文件不会被删除。除此之外，Version中还记录了触发Compaction相关的状态信息，这些信息会在读写请求或Compaction过程中被更新。每当这个时候都会有一个新的对应的Version生成，并插入VersionSet链表头部。Version通过Version* prev和*next指针构成了一个Version双向循环链表，表头指针则在VersionSet中（初始都指向自己）。
 ```obj
 class Version {
  private:
@@ -182,3 +188,5 @@ void SaveTo(Version* v) {
 - [庖丁解LevelDB之版本控制](https://catkang.github.io/2017/02/03/leveldb-version.html)
 - [Leveldb二三事](https://segmentfault.com/a/1190000009707717?utm_source=tag-newest)
 - [leveldb version机制](https://www.cnblogs.com/ewouldblock7/p/3721088.html)
+- [Leveldb源码分析--15](https://blog.csdn.net/sparkliang/article/details/8776583)
+
