@@ -30,7 +30,7 @@ compaction可以提高数据的查询效率，没有经过compaction，需要从
 
 levelDb的compaction机制和过程与Bigtable所讲述的是基本一致的，Bigtable中讲到三种类型的compaction: minor ，major和full。所谓minor Compaction，就是把memtable中的数据导出到SSTable文件中；major compaction就是合并不同层级的SSTable文件，而full compaction就是将所有SSTable进行合并。LevelDb包含其中两种，minor和major。
 
-Memtable Compaction
+**Memtable Compaction**
 
 当 memtable 大小超过 Options.write_buffer_size 时(默认 4MB)，会在下一次写操作时将当前的 memtable 转为 immutable memtable，创建新的 memtable，并触发 immutable memtable 的 compaction。compaction 会由单独的线程来执行。
 
@@ -40,7 +40,7 @@ memtable compaction 的过程很简单，顺序遍历 memtable 将所有的 key/
     当前 memtable 已满需要 compaction 但之前的 immutable memtable compaction 还未完成时，会等待之前的完成。
     当 level-0 sstable 数量达到 kL0_StopWritesTrigger(12) 时，会等待 level-0 compaction 完成。
     
-Sstable Compaction
+**Sstable Compaction**
 
 触发 sstable compaction 的条件如下：
 
