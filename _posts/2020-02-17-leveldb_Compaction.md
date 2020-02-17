@@ -193,9 +193,105 @@ void DBImpl::BackgroundCall() {
 
 bg_cv_.SignalAll()将会唤醒睡眠的用户线程，因为当一个背景线程执行完成之后，用户线程的执行条件可能已经满足了，比如level0中经过合并后，没有那么多文件了。
 
-## 结语
+**每个时刻系统中只允许一个背景线程，背景线程负责两个工作：1. 将imm_写盘。2. 对level之间的文件进行合并。imm_始终记录的是上一个写满的mem_，每当一个mem_写满时，它都会赋值给imm_，同时重新分配一个Memtable给mem_，这样就可以避免将memtable写盘时影响用户写数据。**
+
+```obj
+
+void DBImpl::BackgroundCompaction() {
+  mutex_.AssertHeld();
+
+  if (imm_ != NULL) {
+    CompactMemTable();//将imm_写到level 0
+    return;
+  }
+
+  Compaction* c;
+  bool is_manual = (manual_compaction_ != NULL);
+  InternalKey manual_end;
+  if (is_manual) {//在设置manual_compaction_ 的时候被执行，它主要是用于测试数据库的compaction功能，用于debug
+    ManualCompaction* m = manual_compaction_;
+    c = versions_->CompactRange(m->level, m->begin, m->end);
+    m->done = (c == NULL);
+    if (c != NULL) {
+      manual_end = c->input(0, c->num_input_files(0) - 1)->largest;
+    }
+    Log(options_.info_log,
+        "Manual compaction at level-%d from %s .. %s; will stop at %s\n",
+        m->level,
+        (m->begin ? m->begin->DebugString().c_str() : "(begin)"),
+        (m->end ? m->end->DebugString().c_str() : "(end)"),
+        (m->done ? "(end)" : manual_end.DebugString().c_str()));
+  } else {
+    c = versions_->PickCompaction();//找出最适合compaction的level,它将返回可以进行compaction的level中的文件元信息，这些元信息存储在Compaction类中
+  }
+
+  Status status;
+  if (c == NULL) {//如果c为空，说明没有文件需要进行compaction
+    // Nothing to do
+  } else if (!is_manual && c->IsTrivialMove()) {//这个条件分支主要是处理level+1中没有文件需要和level中的那个文件进行合并的情况。
+  //这种情况，很简单，直接把level中的那个需要合并的文件移动到level+1中即可
+    // Move file to next level
+    assert(c->num_input_files(0) == 1);
+    FileMetaData* f = c->input(0, 0);
+    c->edit()->DeleteFile(c->level(), f->number);
+    c->edit()->AddFile(c->level() + 1, f->number, f->file_size,
+                       f->smallest, f->largest);
+    status = versions_->LogAndApply(c->edit(), &mutex_);
+    if (!status.ok()) {
+      RecordBackgroundError(status);
+    }
+    VersionSet::LevelSummaryStorage tmp;
+    Log(options_.info_log, "Moved #%lld to level-%d %lld bytes %s: %s\n",
+        static_cast<unsigned long long>(f->number),
+        c->level() + 1,
+        static_cast<unsigned long long>(f->file_size),
+        status.ToString().c_str(),
+        versions_->LevelSummary(&tmp));
+  } else {// 否则进行compaction
+  //此时说明level+1中有文件和level中的那个需要合并的文件key范围重合。
+  //因此需要将这个文件和level+1中的那些文件进行合并操作。主体工作是在DoCompactionWork函数中完成
+    CompactionState* compact = new CompactionState(c);
+    status = DoCompactionWork(compact);
+    if (!status.ok()) {
+      RecordBackgroundError(status);
+    }
+    CleanupCompaction(compact);
+    c->ReleaseInputs();
+    DeleteObsoleteFiles();
+  }
+  delete c;
+
+  if (status.ok()) {
+    // Done
+  } else if (shutting_down_.Acquire_Load()) {
+    // Ignore compaction errors found during shutting down
+  } else {
+    Log(options_.info_log,
+        "Compaction error: %s", status.ToString().c_str());
+  }
+
+  if (is_manual) {
+    ManualCompaction* m = manual_compaction_;
+    if (!status.ok()) {
+      m->done = true;
+    }
+    if (!m->done) {
+      // We only compacted part of the requested range.  Update *m
+      // to the range that is left to be compacted.
+      m->tmp_storage = manual_end;
+      m->begin = &m->tmp_storage;
+    }
+    manual_compaction_ = NULL;
+  }
+}
+```
+
+
+## 参考
 
 - [leveldb资料整理 ](https://www.iteye.com/blog/hideto-1328921)
 - [leveldb 源码分析(四) – Compaction](https://youjiali1995.github.io/storage/leveldb-compaction/)
 - [leveldb源码剖析---DBImpl::MakeRoomForWrite函数的实现](https://blog.csdn.net/swartz2015/article/details/66972106)
+- [leveldb源码剖析----compaction](https://blog.csdn.net/Swartz2015/article/details/67633724)
+
 
