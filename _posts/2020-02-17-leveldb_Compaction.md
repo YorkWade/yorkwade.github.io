@@ -138,7 +138,7 @@ Status DBImpl::MakeRoomForWrite(bool force) {
        1. 将imm_写入磁盘生成一个新的sstable
        2. 对各个level中的文件进行合并，避免某个level中的文件过多，以及删除掉一些过期或者已经被用户调用delete删除的key-value。 
 
-```obj
+```objc
 void DBImpl::MaybeScheduleCompaction() {
   mutex_.AssertHeld();
   if (bg_compaction_scheduled_) {
@@ -158,7 +158,7 @@ void DBImpl::MaybeScheduleCompaction() {
 }
 ```
 从这里我们可以看到，每个时刻，leveldb只允许一个背景线程存在。这里需要加锁主要也是这个原因，防止某个瞬间两个线程同时开启背景线程。当确定当前数据库中没有背景线程，也不存在错误，同时确实有工作需要背景线程来完成，就通过env_->Schedule(&DBImpl::BGWork, this)启动背景线程，前面的bg_compaction_scheduled_设置主要是告诉其他线程当前数据库中已经有一个背景线程在运行了。
-```obj
+```objc
 void DBImpl::BackgroundCall() {
   MutexLock l(&mutex_);
   assert(bg_compaction_scheduled_);
@@ -195,7 +195,7 @@ bg_cv_.SignalAll()将会唤醒睡眠的用户线程，因为当一个背景线�
 
 **每个时刻系统中只允许一个背景线程，背景线程负责两个工作：1. 将imm_写盘。2. 对level之间的文件进行合并。imm_始终记录的是上一个写满的mem_，每当一个mem_写满时，它都会赋值给imm_，同时重新分配一个Memtable给mem_，这样就可以避免将memtable写盘时影响用户写数据。**
 
-```obj
+```objc
 
 void DBImpl::BackgroundCompaction() {
   mutex_.AssertHeld();
@@ -287,7 +287,7 @@ void DBImpl::BackgroundCompaction() {
 ```
 
 leveldb的compaction操作主要是由DoCompactionWork函数完成：
-```obj
+```objc
 Status DBImpl::DoCompactionWork(CompactionState* compact) {
   const uint64_t start_micros = env_->NowMicros();
   int64_t imm_micros = 0;  // Micros spent doing imm_ compactions
