@@ -24,7 +24,7 @@ compaction可以提高数据的查询效率，没有经过compaction，需要从
     2. write的时候( DBImpl::Write(DBImpl::MakeRoomForWrite) )
     3. read的时候( DBImpl::Get )
 
-上述操作最终会调用DBImpl::MaybeScheduleCompaction => env_->Schedule(&DBImpl::BGWork, this) => (1) 启后台线程 PosixEnv::Schedule (2) DBImpl::BGWork => DBImpl::BackgroundCall => DBImpl::BackgroundCompaction
+
 
 ### 触发条件
 
@@ -54,6 +54,12 @@ memtable compaction 的过程很简单，顺序遍历 memtable 将所有的 key/
     高一层的文件：挑选和低一层的文件有重叠的所有文件。高一层的总的 key range 可能会覆盖到更多的低一层的文件，所以会进行 expand，同时为了防止 compaction 太大， 会有一定的限制。
 
 ### 源码分析
+
+leveldb在Open/Get/Write时都有可能做
+Compaction: DB::Open/DBImpl::Get/DBImpl::Write(DBImpl::MakeRoomForWrite) =>DBImpl::MaybeScheduleCompaction => env_->Schedule(&DBImpl::BGWork, this) => (1) 启后台线程 PosixEnv::Schedule (2) DBImpl::BGWork => DBImpl::BackgroundCall => DBImpl::BackgroundCompaction 
+
+
+
 ```objc
 
 // REQUIRES: mutex_ is held
@@ -114,6 +120,7 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       logfile_ = lfile;
       logfile_number_ = new_log_number;
       log_ = new log::Writer(lfile);
+      //我们可以把mem_复制给imm_，并为mem_重新分配一个新的Memtable了
       imm_ = mem_;//后台将启动对imm_ 进行写磁盘的过程
       has_imm_.Release_Store(imm_);
       mem_ = new MemTable(internal_comparator_);
@@ -126,11 +133,65 @@ Status DBImpl::MakeRoomForWrite(bool force) {
   return s;
 }
 ```
-从MakeRoomForWrite函数返回之后，mem_中都会有足够空间可写了
+从MakeRoomForWrite函数返回之后，mem_中都会有足够空间可写了.最后的MaybeScheduleCompaction就是开启一个背景线程。背景线程主要做两件事情:
 
+       1. 将imm_写入磁盘生成一个新的sstable
+       2. 对各个level中的文件进行合并，避免某个level中的文件过多，以及删除掉一些过期或者已经被用户调用delete删除的key-value。 
 
+```obj
+void DBImpl::MaybeScheduleCompaction() {
+  mutex_.AssertHeld();
+  if (bg_compaction_scheduled_) {
+    // Already scheduled
+  } else if (shutting_down_.Acquire_Load()) {
+    // DB is being deleted; no more background compactions
+  } else if (!bg_error_.ok()) {
+    // Already got an error; no more changes
+  } else if (imm_ == NULL &&
+             manual_compaction_ == NULL &&
+             !versions_->NeedsCompaction()) {
+    // No work to be done
+  } else {
+    bg_compaction_scheduled_ = true;
+    env_->Schedule(&DBImpl::BGWork, this);  // start new thread to compact memtable , the start point is "BGWork"
+  }
+}
+```
+从这里我们可以看到，每个时刻，leveldb只允许一个背景线程存在。这里需要加锁主要也是这个原因，防止某个瞬间两个线程同时开启背景线程。当确定当前数据库中没有背景线程，也不存在错误，同时确实有工作需要背景线程来完成，就通过env_->Schedule(&DBImpl::BGWork, this)启动背景线程，前面的bg_compaction_scheduled_设置主要是告诉其他线程当前数据库中已经有一个背景线程在运行了。
+```obj
+void DBImpl::BackgroundCall() {
+  MutexLock l(&mutex_);
+  assert(bg_compaction_scheduled_);
+  if (shutting_down_.Acquire_Load()) {
+    // No more background work when shutting down.
+  } else if (!bg_error_.ok()) {
+    // No more background work after a background error.
+  } else {
+    BackgroundCompaction();//背景线程的核心工作
+  }
 
+  bg_compaction_scheduled_ = false;
 
+  // Previous compaction may have produced too many files in a level,
+  // so reschedule another compaction if needed. 
+  MaybeScheduleCompaction();
+  bg_cv_.SignalAll();  // 后台的compaction操作完成
+}
+```
+前两个判断语句主要是判断当前数据库是不是被关闭以及背景线程是否出错了。shutting_down_只会在DB的析构函数中被设置。
+
+如果都没有问题那就进入else里面的BackgroundCompaction处理背景线程的核心工作。
+
+正如我们前面所说，BackgroundCompaction里面主要处理两个工作：
+
+    如果当前的imm_非空，则将其写盘生成一个新的sstable
+    对各个level的文件进行合并，避免level中文件过多，以及删掉被删除的key-value(因为leveldb里面采用的是lazy delete的方法，用户调用delete时没有真正删除元素，只有在背景线程对文件进行合并时才会真的删除元素)。
+
+背景线程完成compaction工作之后，它会尝试继续开启一个背景线程。因为在背景线程执行的时候，其他的用户线程可能已经向mem_写入了很多数据，而imm_在BackgroundCompaction已经被写入磁盘变为空，所以可能此时imm又已经被写满的mem_赋值了，所以应该尝试继续开启新的线程对imm_进行写盘。
+
+不管开启新的背景线程是否成功，当前这个已经完成任务的老旧背景线程都将结束。其实从MaybeScheduleCompaction函数中我们可以看到，只要没有shut_down和背景线程没有出错，一直都会有一个背景线程在后面运行
+
+bg_cv_.SignalAll()将会唤醒睡眠的用户线程，因为当一个背景线程执行完成之后，用户线程的执行条件可能已经满足了，比如level0中经过合并后，没有那么多文件了。
 
 ## 结语
 
