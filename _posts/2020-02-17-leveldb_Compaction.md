@@ -286,6 +286,193 @@ void DBImpl::BackgroundCompaction() {
 }
 ```
 
+leveldb的compaction操作主要是由DoCompactionWork函数完成：
+```obj
+Status DBImpl::DoCompactionWork(CompactionState* compact) {
+  const uint64_t start_micros = env_->NowMicros();
+  int64_t imm_micros = 0;  // Micros spent doing imm_ compactions
+
+  Log(options_.info_log,  "Compacting %d@%d + %d@%d files",
+      compact->compaction->num_input_files(0),
+      compact->compaction->level(),
+      compact->compaction->num_input_files(1),
+      compact->compaction->level() + 1);
+
+  assert(versions_->NumLevelFiles(compact->compaction->level()) > 0);
+  assert(compact->builder == NULL);
+  assert(compact->outfile == NULL);
+  if (snapshots_.empty()) {
+    compact->smallest_snapshot = versions_->LastSequence();
+  } else {
+    compact->smallest_snapshot = snapshots_.oldest()->number_;
+  }
+
+  // Release mutex while we're actually doing the compaction work
+  mutex_.Unlock();
+  //获得一个可以遍历需要compaction的所有文件(level和level+1中所有需要进行compaction操作的文件)的迭代器，
+  //每个迭代器对应一个key-value,这样，我们通过这个迭代器就可以找到compaction结构中的inputs_数组里面的所有文件的key-value。
+  Iterator* input = versions_->MakeInputIterator(compact->compaction);
+  input->SeekToFirst();
+  Status status;
+  ParsedInternalKey ikey;
+  std::string current_user_key;
+  bool has_current_user_key = false;
+  SequenceNumber last_sequence_for_key = kMaxSequenceNumber;
+  for (; input->Valid() && !shutting_down_.Acquire_Load(); ) {////每个input对应的是一个 K/V
+  //循环的主体工作是判断当前迭代器对应的key是否应该加入到新合并生成的文件中
+    // Prioritize immutable compaction work
+    if (has_imm_.NoBarrier_Load() != NULL) {
+      const uint64_t imm_start = env_->NowMicros();
+      mutex_.Lock();
+      //每次循环开始先判断当前的imm_是否为空，如果为空的话，先将它写入磁盘，
+      //这主要是为了防止imm_没有及时写盘造成用户线程不能写mem。
+      if (imm_ != NULL) {
+        CompactMemTable();////这里就是将imm_写入磁盘中
+        bg_cv_.SignalAll();  // Wakeup MakeRoomForWrite() if necessary
+      }
+      mutex_.Unlock();
+      imm_micros += (env_->NowMicros() - imm_start);
+    }
+
+    //把迭代器对应的key提取出来，因为在此之前我们可能以及遍历过多个key-value了，
+    //也就是可能已经将多个key-value写入到新的sstable中了
+    Slice key = input->key();
+    //这里通过ShouldStopBefore函数判断是否符合生成一个新的sstable的条件，
+    //如果符合的话就将这个sstable写盘，如果不符合的话，就继续往里面加key-value
+    if (compact->compaction->ShouldStopBefore(key) &&
+        compact->builder != NULL) {
+      status = FinishCompactionOutputFile(compact, input);
+      if (!status.ok()) {
+        break;
+      }
+    }
+
+    // Handle key/value, add to state, etc.
+    bool drop = false;
+    if (!ParseInternalKey(key, &ikey)) {//不合法的key
+      // Do not hide error keys
+      current_user_key.clear();
+      has_current_user_key = false;
+      last_sequence_for_key = kMaxSequenceNumber;
+    } else {
+      if (!has_current_user_key ||
+          user_comparator()->Compare(ikey.user_key,
+                                     Slice(current_user_key)) != 0) {////如果等于0，表示这个key和之前度过的key相同，不必再添加了
+        // First occurrence of this user key
+        current_user_key.assign(ikey.user_key.data(), ikey.user_key.size());
+        has_current_user_key = true;
+        last_sequence_for_key = kMaxSequenceNumber;
+      }
+      //对于过期的key，通过检查这个key的序列号，判断它是否在系统快照中，如果在的话，即使它是过期key也不能丢弃
+      if (last_sequence_for_key <= compact->smallest_snapshot) {    
+        // Hidden by an newer entry for same user key
+        drop = true;    // (A)
+      } else if (ikey.type == kTypeDeletion &&
+                 ikey.sequence <= compact->smallest_snapshot &&
+                 compact->compaction->IsBaseLevelForKey(ikey.user_key)) {
+        //对于非过期的key，检查这个key的type，看它是否是kTypeDeletion，即是否已经被用户删除了。
+        // For this user key:
+        // (1) there is no data in higher levels
+        // (2) data in lower levels will have larger sequence numbers
+        // (3) data in layers that are being compacted here and have
+        //     smaller sequence numbers will be dropped in the next
+        //     few iterations of this loop (by rule (A) above).
+        // Therefore this deletion marker is obsolete and can be dropped.
+        
+        //至此为止，当前key要么是第一次出现，要么是有快照保护，好像不能丢弃。但是事情还没完，
+        //我们还不能据此判断该key是否应该被保存下来，我们还要判断它的type，但是事情远没有我们想得那么简单，
+        //除了判断key的type之外，我们还要做其他判断.也就是说，当一个key为kTypeDeletion时它还不一定是要被删除的。为什么呢。
+
+        //想象一个场景：用户在调用delete删除一个key时，这个key在数据库中有一个过期的key存在，
+        //而这个过期key还来不及和这个被删除的key合并，如果在这种情况下，我们直接将这个被标记为删除的key丢弃，
+        //那数据库中还会存在一个过期的key，而这个过期的key在丢弃那个被删除的key时瞬间就变成正常不过期的key了，
+        //于是下次读key时，会读到这个本应该过期的key，按道理应该是找不到key才对。所以为了系统正常运行，
+        //我们每次丢弃一个标记为kTypeDeletion的key时，必须保证数据库中不存在它的过期key，否则就得将它保留，
+        //直到后面它和这个过期的key合并为止，合并之后再丢弃。
+
+        //所以这里会调用IsBaseLevelForKey函数判断level+2及level+2之后的所有level中没有和这个标记为删除的key相同的key，
+        //只要有，就肯定是过期key了
+        drop = true;
+      }
+
+      last_sequence_for_key = ikey.sequence;
+    }
+#if 0
+    Log(options_.info_log,
+        "  Compact: %s, seq %d, type: %d %d, drop: %d, is_base: %d, "
+        "%d smallest_snapshot: %d",
+        ikey.user_key.ToString().c_str(),
+        (int)ikey.sequence, ikey.type, kTypeValue, drop,
+        compact->compaction->IsBaseLevelForKey(ikey.user_key),
+        (int)last_sequence_for_key, (int)compact->smallest_snapshot);
+#endif
+
+    if (!drop) {
+      // Open output file if necessary
+      if (compact->builder == NULL) {
+        status = OpenCompactionOutputFile(compact);
+        if (!status.ok()) {
+          break;
+        }
+      }
+      if (compact->builder->NumEntries() == 0) {
+        compact->current_output()->smallest.DecodeFrom(key);
+      }
+      compact->current_output()->largest.DecodeFrom(key);
+      compact->builder->Add(key, input->value());//把这个键值加入新建的sstable文件中
+
+      // Close output file if it is big enough
+      //// 如果当前结果文件已经足够大，则关闭文件，以后的compaction结果再放到新的文件中
+      if (compact->builder->FileSize() >=
+          compact->compaction->MaxOutputFileSize()) {
+        status = FinishCompactionOutputFile(compact, input);
+        if (!status.ok()) {
+          break;
+        }
+      }
+    }
+
+    input->Next();
+  }
+
+  if (status.ok() && shutting_down_.Acquire_Load()) {
+    status = Status::IOError("Deleting DB during compaction");
+  }
+  if (status.ok() && compact->builder != NULL) {
+    status = FinishCompactionOutputFile(compact, input);
+  }
+  if (status.ok()) {
+    status = input->status();
+  }
+  delete input;
+  input = NULL;
+
+  CompactionStats stats;
+  stats.micros = env_->NowMicros() - start_micros - imm_micros;
+  for (int which = 0; which < 2; which++) {
+    for (int i = 0; i < compact->compaction->num_input_files(which); i++) {
+      stats.bytes_read += compact->compaction->input(which, i)->file_size;
+    }
+  }
+  for (size_t i = 0; i < compact->outputs.size(); i++) {
+    stats.bytes_written += compact->outputs[i].file_size;
+  }
+
+  mutex_.Lock();
+  stats_[compact->compaction->level() + 1].Add(stats);
+
+  if (status.ok()) {
+    status = InstallCompactionResults(compact);
+  }
+  if (!status.ok()) {
+    RecordBackgroundError(status);
+  }
+  VersionSet::LevelSummaryStorage tmp;
+  Log(options_.info_log,
+      "compacted to: %s", versions_->LevelSummary(&tmp));
+  return status;
+}
+```
 
 ## 参考
 
