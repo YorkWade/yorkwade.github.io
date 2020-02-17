@@ -280,7 +280,7 @@ Status VersionSet::LogAndApply(VersionEdit* edit, port::Mutex* mu) {
 
 LogAndApply。这个函数主要是当一个Version结束时，将这个Version所做的修改(VersionEdit里)保存到一个新的Version中(VersionSet以后就使用这个Version了)，然后持久化到MANIFEST文件中(WriteSnapshot或者直接进行log record)，并将current指向最新的Version。
 
-```obj
+```objc
 void SaveTo(Version* v) {
     BySmallestKey cmp;
     cmp.internal_comparator = &vset_->icmp_;
