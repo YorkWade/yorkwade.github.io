@@ -129,8 +129,102 @@ class VersionEdit {
 
 ![](https://image-static.segmentfault.com/600/545/600545784-59391361dc06d_articlex)
 
+
+## 触发版本变化的主要有两个地方
+
+    将memtable写入磁盘，生成新的sstable
+    compaction操作
+
+下面我们分别看一下在这两个操作下，版本信息是怎么进行管理的。
+这个过程主要是在DBImpl::CompactMemTable函数中完成
+以下我们摘取这个函数的部分代码分析一下
+
+  VersionEdit edit;
+  Version* base = versions_->current();
+  base->Ref();
+  Status s = WriteLevel0Table(imm_, &edit, base);
+  base->Unref();
+
+    1
+    2
+    3
+    4
+    5
+
+这里主要是申请了一个VersionEdit变量，并把他传入到WriteLevel0Table函数中，用于记录新生成的sstable文件信息。我们追踪到WriteLevel0Table函数里面就可以看到下面的代码：
+
+edit->AddFile(level, meta.number, meta.file_size,
+                  meta.smallest, meta.largest);
+
+    1
+    2
+
+这个函数将新生成的sstable文件的元信息加入到VersionEdit的new_files_中。
+
+再回到CompactMemTable函数：
+```objc
+  if (s.ok()) {
+    edit.SetPrevLogNumber(0);
+    edit.SetLogNumber(logfile_number_);  // Earlier logs no longer needed
+    s = versions_->LogAndApply(&edit, &mutex_); 
+  }
+```
+
+
+这个就是版本管理的关键了。其中LogAndApply函数将根据前面记录的版本修改信息更新当前版本，得到一个新的版本信息。同时把这个新的版本信息设置成当前VersionSet的current_，并连入版本集合的链表中。
+
+这个函数我们后面再介绍，这里我们只需要知道根据修改信息生成新的版本就可以了。
+
+可以看到，对于CompactMemTable，版本的修改信息很简单，就是在new_files_里面添加一个新的文件元信息。
+compaction操作
+
+这个工作主要是在函数DBImpl::BackgroundCompaction中完成。前面我们分析的时候知道，对level和level+1中的文件进行compaction时会有两中情况
+
+    当level+1中没有文件和level中的那个待compaction的文件的key范围重合时，此时直接将level中的那个文件移动到level+1中的那个文件即可。
+    level+1中有文件和level中的那个文件key范围重合。则进行常规的compaction。
+
+下面我们分别从这两种情况看一下版本管理流程。
+```objc
+else if (!is_manual && c->IsTrivialMove()) { //当input[0](level)中只有一个需要compaction的文件，input[1](level+1)中没有需要compaction的文件
+    // Move file to next level
+    assert(c->num_input_files(0) == 1);
+    FileMetaData* f = c->input(0, 0); // 将 f 从 c->level移动到 c->level + 1中即可
+
+    c->edit()->DeleteFile(c->level(), f->number);
+    c->edit()->AddFile(c->level() + 1, f->number, f->file_size,
+                       f->smallest, f->largest);
+    status = versions_->LogAndApply(c->edit(), &mutex_); //只需要在edit中记录就可以了
+
+```
+对于第一种情况，VersionEdit将level中的那个文件的元信息删除。同时把这个元信息移动到level+1中，最后调用LogAndApply更新当前版本信息。
+
+对于第二种情况，主要是由DoCompactionWork函数中InstallCompactionResults函数的完成。
+
+BackgroundCompaction -> DoCompactionWork -> InstallCompactionResults
+
+下面分析一个InstallCompactionResults函数：
+```objc
+    compact->compaction->AddInputDeletions(compact->compaction->edit());
+    const int level = compact->compaction->level();
+```
+前面我们分析过compaction->input数组中包含了本次compaction操作所需要的所有sstable文件信息，同时compaction->output中包含了所有新生成的文件信息，因此我们很自然的想法是将inputs_中的文件信息加入到VersionEdit的deleted_files中，而将outputs中的文件信息加入到它的new_files_中，InstallCompactionResults正是这么做的。上面的AddInputDeletions函数就是将input_的文件信息加入到edit的deleted_files中，而下面的for循环
+```objc
+  for (size_t i = 0; i < compact->outputs.size(); i++) {
+    const CompactionState::Output& out = compact->outputs[i];
+    compact->compaction->edit()->AddFile(
+        level + 1,
+        out.number, out.file_size, out.smallest, out.largest);
+  }
+```
+则将output_中的文件信息加入到new_files数组中。
+```objc
+versions_->LogAndApply(compact->compaction->edit(), &mutex_);
+```
+最后一如既往调用LogAndApply函数将修改信息更新到当前版本，生成一个新的版本信息
+
+
 那么将如何从旧版本生成新版本了？看下下段VersionSet::LogAndApply的代码：
-```obj
+```objc
 Status VersionSet::LogAndApply(VersionEdit* edit, port::Mutex* mu) {
   ...
   Version* v = new Version(this);
@@ -225,8 +319,13 @@ void SaveTo(Version* v) {
     }
   }
 ```
+## 总结
+
+一个健壮的数据库系统，版本信息是必不可少的。leveldb的版本信息主要是记录数据库的文件信息。随着compaction操作和memtable的写盘，数据库中的文件会不断发生变化，因此对于每次可能生成新的sstable文件或者可能删除已有的sstable文件的操作，都必须进行版本更新。这里我们从以上两个操作来跟踪了解了leveldb的版本更新工作流程。leveldb通过versionedit记录版本的修改信息，然后通过LogAndApply函数将这个修改信息更新到当前的版本(current_)，生成新的版本信息。leveldb还通过versionSet将从系统启动开始经历的所有版本信息放在一个集合中进行管理，这个集合是用链表支持的，最新的版本总是Append到链表的尾部
 
 ## 参考
+
+- [leveldb源码剖析---版本管理](https://blog.csdn.net/Swartz2015/article/details/68062639)
 - [庖丁解LevelDB之版本控制](https://catkang.github.io/2017/02/03/leveldb-version.html)
 - [Leveldb二三事](https://segmentfault.com/a/1190000009707717?utm_source=tag-newest)
 - [leveldb version机制](https://www.cnblogs.com/ewouldblock7/p/3721088.html)
