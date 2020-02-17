@@ -12,7 +12,6 @@ tags:
 
 leveldb是LSM数据库，Log Structured Merge中，Merge就对应着Compaction。
      
-## 前言
 
 ### 为什么要compaction?
 
