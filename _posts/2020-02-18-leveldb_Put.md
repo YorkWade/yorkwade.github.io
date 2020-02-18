@@ -10,7 +10,9 @@ tags:
     - leveldb
 ---
 
+leveldb 的写操作很简单，先写 WAL，然后写到 memtable
 
+## 源码分析
 
 ```objc
 DBImpl::Put -> DB::Put -> DBImpl::Write
