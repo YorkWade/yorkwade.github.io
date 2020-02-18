@@ -135,6 +135,7 @@ class VersionEdit {
     将memtable写入磁盘，生成新的sstable
     compaction操作
 
+### memtable写盘
 下面我们分别看一下在这两个操作下，版本信息是怎么进行管理的。
 这个过程主要是在DBImpl::CompactMemTable函数中完成
 以下我们摘取这个函数的部分代码分析一下
@@ -167,7 +168,7 @@ edit->AddFile(level, meta.number, meta.file_size,
 这个函数我们后面再介绍，这里我们只需要知道根据修改信息生成新的版本就可以了。
 
 可以看到，对于CompactMemTable，版本的修改信息很简单，就是在new_files_里面添加一个新的文件元信息。
-compaction操作
+### compaction操作
 
 这个工作主要是在函数DBImpl::BackgroundCompaction中完成。前面我们分析的时候知道，对level和level+1中的文件进行compaction时会有两中情况
 
