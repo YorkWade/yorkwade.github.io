@@ -138,27 +138,18 @@ class VersionEdit {
 下面我们分别看一下在这两个操作下，版本信息是怎么进行管理的。
 这个过程主要是在DBImpl::CompactMemTable函数中完成
 以下我们摘取这个函数的部分代码分析一下
-
+```objc
   VersionEdit edit;
   Version* base = versions_->current();
   base->Ref();
   Status s = WriteLevel0Table(imm_, &edit, base);
   base->Unref();
-
-    1
-    2
-    3
-    4
-    5
-
+```
 这里主要是申请了一个VersionEdit变量，并把他传入到WriteLevel0Table函数中，用于记录新生成的sstable文件信息。我们追踪到WriteLevel0Table函数里面就可以看到下面的代码：
-
+```objc
 edit->AddFile(level, meta.number, meta.file_size,
                   meta.smallest, meta.largest);
-
-    1
-    2
-
+```
 这个函数将新生成的sstable文件的元信息加入到VersionEdit的new_files_中。
 
 再回到CompactMemTable函数：
