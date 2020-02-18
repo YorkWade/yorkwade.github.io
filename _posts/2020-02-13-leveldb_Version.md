@@ -27,7 +27,7 @@ VersionEdit记录了Version之间的变化，相当于delta增量，表示又增
 
 ### Version
 LeveDB用Version表示当前磁盘及内存中的所有文件元信息，是当时版本的 sstable 组织结构，只有每次 compaction 完成时才会改变 sstable 的 组织结构并增加一个新的 Version。Version中主要包括一个FileMetaData指针的二维数组，分层记录了所有的SST文件信息。FileMetaData数据结构用来维护一个文件的元信息，包括文件大小，文件编号，最大最小值，引用计数等，其中引用计数记录了被不同的Version引用的个数，保证被引用中的文件不会被删除。除此之外，Version中还记录了触发Compaction相关的状态信息，这些信息会在读写请求或Compaction过程中被更新。每当这个时候都会有一个新的对应的Version生成，并插入VersionSet链表头部。Version通过Version* prev和*next指针构成了一个Version双向循环链表，表头指针则在VersionSet中（初始都指向自己）。
-```obj
+```objc
 class Version {
  private:
   VersionSet* vset_; // VersionSet to which this Version belongs
@@ -50,7 +50,7 @@ class Version {
 ### VersionSet
 VersionSet是Version集合，所有的Version都挂在VersionSet对象下面，一个db只有一个VersionSet。VersionSet是一个Version构成的双向链表，这些Version按时间顺序先后产生，记录了当时的元信息，链表头指向当前最新的Version，同时维护了每个Version的引用计数，被引用中的Version不会被删除，其对应的SST文件也因此得以保留，通过这种方式，使得LevelDB可以在一个稳定的快照视图上访问文件。VersionSet中除了Version的双向链表外还会记录一些如LogNumber，Sequence，下一个SST文件编号的状态信息。
 
-```obj
+```objc
 class VersionSet {
  public:
   ...
@@ -99,7 +99,7 @@ VersionSet Version 示意图
 
 ![](https://img-my.csdn.net/uploads/201304/09/1365478054_1495.JPG)
 
-```obj
+```objc
 class VersionEdit {
  public:
  ...
