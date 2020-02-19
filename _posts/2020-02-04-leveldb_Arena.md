@@ -156,3 +156,4 @@ char* Arena::AllocateAligned(size_t bytes) {
 
 - [LevelDB源码解析27. Arena内存分配器](https://zhuanlan.zhihu.com/p/45843295)
 - [LevelDB源码剖析之Arena内存管理](http://mingxinglai.com/cn/2013/01/leveldb-arena/)
+- [深入浅出leveldb之MemTable](https://blog.csdn.net/weixin_42663840/article/details/82263358)
