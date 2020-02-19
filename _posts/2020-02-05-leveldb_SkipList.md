@@ -356,4 +356,5 @@ bool SkipList<Key,Comparator>::Contains(const Key& key) const {
 - [LevelDB源码剖析之基础部件-SkipList](https://www.jianshu.com/p/6624befde844)
 - [leveldb 源码分析(三) – Write](https://youjiali1995.github.io/storage/leveldb-write/)
 - [理解 C++ 的 Memory Order](https://senlinzhan.github.io/2017/12/04/cpp-memory-order/)
+- [深入浅出leveldb之MemTable](https://blog.csdn.net/weixin_42663840/article/details/82263358)
 
