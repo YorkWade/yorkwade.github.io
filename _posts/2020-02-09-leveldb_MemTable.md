@@ -308,4 +308,4 @@ bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) {
 
 - [LevelDb 源码阅读--memtable](https://zhuanlan.zhihu.com/p/79064869)
 - [leveldb设计分析之memtable](https://blog.csdn.net/brainkick/article/details/48679345)
-
+- [深入浅出leveldb之MemTable](https://blog.csdn.net/weixin_42663840/article/details/82263358)
