@@ -53,7 +53,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
   writers_.push_back(&w);//将Writer放入到writers_中，Writers_是一个双端队列-deque
   //只有队首的才会执行后续操作,这主要是为了保证每次只有一个消费者对writers_队列进行处理。
   //leveldb将放入队首的生产者选为消费者
-  while (!w.done && &w != writers_.front()) {
+  while (!w.done && &w != writers_.front()) {//实现方式类似leader-follower方式
     w.cv.Wait();
   }
   if (w.done) {
