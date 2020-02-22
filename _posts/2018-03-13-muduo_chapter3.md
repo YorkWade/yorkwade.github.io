@@ -88,7 +88,7 @@ tcpcopy可用于压力测试。</br>
     IO bound或CPU bound（例如subset sum，是NP-Complete）的服务，多线程都没有绝对意义上的优势。
     多线程，主要能提高响应速度，让IO和计算重叠，降低latency（延迟），并且能享受增加cpu数目带来的好处，提供非均质的服务（响应优先级高的事件可以用专门的线程）。
 
-机群管理软件（LLNL的SLURM）：https://computing.llnl.gov/tutorials/linux_clusters/
+[机群管理软件（LLNL的SLURM）](https://computing.llnl.gov/tutorials/linux_clusters/)</br>
 [slave实现要点](http://www.slideshare.net/chenshuo/zurg-part-1)
 一台机器提供某个功能：</br>
     多线程程序中的线程大致分为3类：
