@@ -15,6 +15,7 @@ tags:
 用同步原语保护内部状态，但对象的生死不能由对象自身拥有的mutex保护。如何避免对象析构是可能存在的race condition是C++多线程面临的基本问题，可以借助boost的share_ptr和weak_ptr完美解决。Observer模式的必备技术。
 
 析构遇到多线程时，面临的问题：
+
     一个线程执行对象某个成员函数，另一个线程析构该对象。
     对象销毁时，析构函数是否会执行一半，切换线程。（对象可能存在继承关系）
 
@@ -52,13 +53,14 @@ c++标准库里的大多数class都不是线程安全的,包括std::string、std
 
 shared_ptr计数本身是线程安全且无锁的，但是shared_ptr对象的读写操作不是线程安全的，需要加锁。如shared_ptr<T> globalPtr;多线程读写他需要加锁。
 shared_ptr注意：
-1、可能会意外延长对象生命期，如用boost::bind会把实参拷贝一份，不是形参。
-2、shared_ptr拷贝开销比原始指针高。可以最外层的函数用shared_ptr引用，函数最内层用原始指针。通常以常引用传参。
-3、shared_ptr是管理共享资源的利器，需要注意避免循环引用，通常的做法是，owner持有child的shared_ptr，child持有只想owner的weak_ptr。
-4、定制析构。shared_ptr的构造函数可以有一个额外的模版参数，可传入函数指针fun，在析构对象时，执行fun(ptr),ptr为shared_ptr保护的对象指针。可以用来解决，map中保存shared_ptr，而使得对象一直存在，延长对象生命期，当对象析构的时候，回调fun函数，有机会调用map.erase。还需要使用enable_shared_from_this可使成员函数fun函数能够保证对象的生命周期。在对象池的应用场景中。
-5、弱回调（如果活着，就调用他的成员函数，否则就忽略之）。weak_ptr转为shared_ptr，如果转成功就调用成员函数，否则不调用。
+    
+    1、可能会意外延长对象生命期，如用boost::bind会把实参拷贝一份，不是形参。
+    2、shared_ptr拷贝开销比原始指针高。可以最外层的函数用shared_ptr引用，函数最内层用原始指针。通常以常引用传参。
+    3、shared_ptr是管理共享资源的利器，需要注意避免循环引用，通常的做法是，owner持有child的shared_ptr，child持有只想owner的weak_ptr。
+    4、定制析构。shared_ptr的构造函数可以有一个额外的模版参数，可传入函数指针fun，在析构对象时，执行fun(ptr),ptr为shared_ptr保护的对象指针。可以用来解决，map中保存shared_ptr，而使得对象一直存在，延长对象生命期，当对象析构的时候，回调fun函数，有机会调用map.erase。还需要使用enable_shared_from_this可使成员函数fun函数能够保证对象的生命周期。在对象池的应用场景中。
+    5、弱回调（如果活着，就调用他的成员函数，否则就忽略之）。weak_ptr转为shared_ptr，如果转成功就调用成员函数，否则不调用。
 
-对象池最佳实现：
+**对象池最佳实现：**
 ```objc
 class StockFactory : public boost::enable_shared_from_this<StockFactory>,
                      boost::noncopyable
@@ -141,8 +143,9 @@ void testShortLifeFactory()
   }
   // stock destructs here
 }
-
-Observer模式最佳实现：
+```
+**Observer模式最佳实现：**
+```objc
 #include <algorithm>
 #include <vector>
 #include <stdio.h>
@@ -248,14 +251,14 @@ RAII(资源获取即初始化)时C++语言区别其他语言的重要特性。�
 
 无需自己编写引用计数的智能指针，重新发明轮子。shared_ptr提供了完美的解决方案。
 
-尽量减少使用跨线程对象，使用生产者消费者，任务队列这种有规律的机制，最低限度的共享数据。
-原始指针暴露给多线程会造成race condition或额外的簿记负担。
-统一使用shared_ptr/scoped_ptr来管理对象的生命期，在多线程中尤为重要。
-shared_ptr当心延长对象生命周期。
-weak_ptr/shared_ptr的好搭档，可用作弱回调、对象池。
-Observer的设计模式，有本质问题：Observer是基类，强耦合（仅次于友元），如果需要观察多个类型的事件（时钟和温度），需要多继承，如果重复观察同一类型的事件（1秒一次心跳和3秒一次自检），需要额外技术。可用boost::function/boost:bind绕开。类似于Signal/Slots的模式。
-《C++沉思录》详细介绍了handle/body idiom，这是编写大型c++程序的必备技术，也是实现物理隔离的法宝。
-《java concurrency in practice》 多线程领域专著。
+尽量减少使用跨线程对象，使用生产者消费者，任务队列这种有规律的机制，最低限度的共享数据。</br>
+原始指针暴露给多线程会造成race condition或额外的簿记负担。</br>
+统一使用shared_ptr/scoped_ptr来管理对象的生命期，在多线程中尤为重要。</br>
+shared_ptr当心延长对象生命周期。</br>
+weak_ptr/shared_ptr的好搭档，可用作弱回调、对象池。</br>
+Observer的设计模式，有本质问题：Observer是基类，强耦合（仅次于友元），如果需要观察多个类型的事件（时钟和温度），需要多继承，如果重复观察同一类型的事件（1秒一次心跳和3秒一次自检），需要额外技术。可用boost::function/boost:bind绕开。类似于Signal/Slots的模式。</br>
+《C++沉思录》详细介绍了handle/body idiom，这是编写大型c++程序的必备技术，也是实现物理隔离的法宝。</br>
+《java concurrency in practice》 多线程领域专著。</br>
 
 ## 我的总结：
     多线程下
@@ -268,7 +271,9 @@ Observer的设计模式，有本质问题：Observer是基类，强耦合（仅�
 
 ## 附：
 std::shared_ptr 和 std::weak_ptr的用法以及引用计数的循环引用问题
+
     在std::shared_ptr被引入之前，C++标准库中实现的用于管理资源的智能指针只有std::auto_ptr一个而已。std::auto_ptr的作用非常有限，因为它存在被管理资源的所有权转移问题。这导致多个std::auto_ptr类型的局部变量不能共享同一个资源，这个问题是非常严重的哦。因为，我个人觉得，智能指针内存管理要解决的根本问题是：一个堆对象（或则资源，比如文件句柄）在被多个对象引用的情况下，何时释放资源的问题。何时释放很简单，就是在最后一个引用它的对象被释放的时候释放它。关键的问题在于无法确定哪个引用它的对象是被最后释放的。std::shared_ptr确定最后一个引用它的对象何时被释放的基本想法是：对被管理的资源进行引用计数，当一个shared_ptr对象要共享这个资源的时候，该资源的引用计数加1，当这个对象生命期结束的时候，再把该引用技术减少1。这样当最后一个引用它的对象被释放的时候，资源的引用计数减少到0，此时释放该资源。下边是一个shared_ptr的用法例子：
+    
 ```objc
 #include <iostream>  
 #include <memory>  
@@ -317,6 +322,7 @@ int main(int argc, char** argv){
     return 0;  
 }  
 ```
+
     在Man类内部会引用一个Woman，Woman类内部也引用一个Man。当一个man和一个woman是夫妻的时候，他们直接就存在了相互引用问题。man内部有个用于管理wife生命期的shared_ptr变量，也就是说wife必定是在husband去世之后才能去世。同样的，woman内部也有一个管理husband生命期的shared_ptr变量，也就是说husband必须在wife去世之后才能去世。这就是循环引用存在的问题：husband的生命期由wife的生命期决定，wife的生命期由husband的生命期决定，最后两人都死不掉，违反了自然规律，导致了内存泄漏。
      解决std::shared_ptr循环引用问题的钥匙在weak_ptr手上。weak_ptr对象引用资源时不会增加引用计数，但是它能够通过lock()方法来判断它所管理的资源是否被释放。另外很自然地一个问题是：既然weak_ptr不增加资源的引用计数，那么在使用weak_ptr对象的时候，资源被突然释放了怎么办呢？呵呵，答案是你根本不能直接通过weak_ptr来访问资源。那么如何通过weak_ptr来间接访问资源呢？答案是：在需要访问资源的时候weak_ptr为你生成一个shared_ptr，shared_ptr能够保证在shared_ptr没有被释放之前，其所管理的资源是不会被释放的。创建shared_ptr的方法就是lock()方法。
     细节：shared_ptr实现了operator bool() const方法来判断一个管理的资源是否被释放
