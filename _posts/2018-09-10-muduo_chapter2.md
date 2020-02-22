@@ -1,7 +1,7 @@
 ---
 layout:     post
-title:      muduo读书笔记之线程同步精要
-subtitle:   第2章
+title:      muduo读书笔记之第2章
+subtitle:   线程同步精要
 date:       2018-09-10
 author:     BY
 header-img: img/post-bg-swift2.jpg
@@ -11,7 +11,6 @@ tags:
 ---
 
 
-第2章 线程同步精要
 
 并发编程有两种基本模型:
 
