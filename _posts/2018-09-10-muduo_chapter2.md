@@ -40,12 +40,14 @@ mutex
     2、使用RAII可保证，加锁解锁在同一线程、不会重复解锁、忘记解锁。
     3、必要时可考虑PTHREAD_MUTEX_ERRORCHECK排错。
 
-非递归锁和递归锁性能差别不大，因为少用一个计数器，前者略快。使用非递归锁，可将死锁暴露出来，可通过查看各个线程的调用堆栈（gdb中使用thread apply all bt命令），即可debug。使用递归锁，可能偶尔崩溃，天知道。
-windows 的CRITICAL_SECTION 是递归锁。
-避免误用：
+非递归锁和递归锁性能差别不大，因为少用一个计数器，前者略快。使用非递归锁，可将死锁暴露出来，可通过查看各个线程的调用堆栈（gdb中使用thread apply all bt命令），即可debug。使用递归锁，可能偶尔崩溃，天知道。<\br>
+windows 的CRITICAL_SECTION 是递归锁。<\br>
+避免误用：<\br>
     如果一个函数既可能在加锁的情况下调用，又可能在未加锁的情况下调用，那就拆成两个：
+    
     1、跟原来的函数同名，函数加锁，转而调用第二个函数。
     2、给函数名加上后缀WithLockedHold,不加锁，把原来的函数搬过来。
+    
 Pthreads 提供isLockedByThisThread（）方法，可assert(mutex.isLockedByThisThread()；
 《Lock Convoys Explained》潘爱民 使用锁可能对性能的影响。
 
@@ -131,7 +133,8 @@ signal/broadcast端：
 条件变量典型应用BlockingQueue和CountDownLatch
 mutex应该先于condition构造。
 
-先精通这两个同步原语，学会编写正确的、安全的多线程程序，再在必要的时候考虑“高技术”-lock-free  Lock-Free Code: A False Sense of Security http://www.drdobbs.com/cpp/lock-free-code-a-false-sense-of-security/210600279       https://coolshell.cn/articles/8239.html
+先精通这两个同步原语，学会编写正确的、安全的多线程程序，再在必要的时候考虑“高技术”-lock-free   [Lock-Free Code: A False Sense of Security](http://www.drdobbs.com/cpp/lock-free-code-a-false-sense-of-security/210600279)       
+[无所队列](https://coolshell.cn/articles/8239.html)
 不要用读写锁和信号量
 读写锁
 
@@ -164,8 +167,9 @@ sleep/usleep/nanosleep只能出现在测试代码中，用于有意延长临界�
 在分布式系统中，多机的伸缩性（scale out）比单机的性能优化更值得投入精力。在程序的复杂度和性能中，考虑未来两三年的可能（CPU变快，核数变多，机器数量增加，网络升级）。
 
 归纳总结：
-尽量用高层同步设施（线程池、队列】倒计时）
-使用底层的同步设施（互斥器、条件变量）完成剩余的同步任务，采用RAII和Scoped locking方式。
+
+	尽量用高层同步设施（线程池、队列】倒计时）
+	使用底层的同步设施（互斥器、条件变量）完成剩余的同步任务，采用RAII和Scoped locking方式。
 
 借shared_ptr实现copy-on-write
 CopyOnWrite_test 只用非递归锁
