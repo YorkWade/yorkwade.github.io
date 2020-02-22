@@ -2,7 +2,7 @@
 layout:     post
 title:      muduo读书笔记之第2章
 subtitle:   线程同步精要
-date:       2018-09-10
+date:       2018-03-10
 author:     BY
 header-img: img/post-bg-swift2.jpg
 catalog: true
@@ -18,14 +18,14 @@ tags:
 	2、shared memory
 	
 本章多次引用《 Real-World Concurrenc》【RWC】</br>
-线程同步四项原则：
+### 线程同步四项原则：
 
     1、尽量最低限度的共享对象，减少同步场合。对象能不暴露就不暴露，如果暴露优先immutalbe,最后用同步措施。
     2、使用高级的并发编程构建。TaskQueue、Producer-Consumer Queue、CountDownLatch(倒计时)
     3、最后不得已使用同步原语。只用非递归互斥器和条件变量，慎用读写锁，不用信号量。
     4、除了使用atomic原子整数之外，不自己编写lock-free代码（见【RWC】），不要用内核级同步原语，不凭空猜测”哪种性能好“如spin lock vs. mutex。
 
-mutex
+### mutex
 原则：
 
     1、用RAII手法封装mutex的创建、销毁、加锁、解锁四个操作，这是c++标准实践。
@@ -50,7 +50,7 @@ windows 的CRITICAL_SECTION 是递归锁。<\br>
 Pthreads 提供isLockedByThisThread（）方法，可assert(mutex.isLockedByThisThread()；
 《Lock Convoys Explained》潘爱民 使用锁可能对性能的影响。
 
-条件变量
+### 条件变量
     只有一种正确使用方式，不易用错：
 wait端：
 
@@ -134,7 +134,7 @@ mutex应该先于condition构造。
 
 先精通这两个同步原语，学会编写正确的、安全的多线程程序，再在必要的时候考虑“高技术”-lock-free   [Lock-Free Code: A False Sense of Security](http://www.drdobbs.com/cpp/lock-free-code-a-false-sense-of-security/210600279)       
 [无所队列](https://coolshell.cn/articles/8239.html)
-不要用读写锁和信号量
+### 不要用读写锁和信号量
 读写锁
 
     1、程序员如果在读锁中误用修改数据的函数，出现问题不易维护
@@ -142,17 +142,17 @@ mutex应该先于condition构造。
     3、有的读锁可以提升为写锁（Pthread rwlock不允许提升），如果提升为写锁，就跟递归锁一样，可能造成迭代器失效。
     4、读锁可重入，写锁不可重入，读锁在可重入时可能会与写锁发生死锁。追求低延时读取的场合不适合读写锁。写锁优先，会阻塞后面的读锁。对一个同享的数据布局,读的频率远弘远于写,所以用了读写锁.但是发现写线程老是抢不到锁。http://blog.csdn.net/ysu108/article/details/39343295 慎用读写锁
 
-信号量
+#### 信号量
     信号量有自己的计数值，而通常我们自己的数据结构也有长度之，这就造成了同样的信息保存了两份，需要时刻保持一致，增加了程序员负担和出错的可能。
 
 多线程编程中，尽量缩短临界区。
 google的CHECK()宏可实现non-degug 的 assert
 
-线程安全的Singleton
+#### 线程安全的Singleton
 double checked locking（DCL），有“神牛”指出由于乱序执行的影响，DCL可能靠不住。
 linux中可以使用pthread_onces实现singeton的线程安全。
 
-Sleep(3)不是同步原语
+#### Sleep(3)不是同步原语
 sleep/usleep/nanosleep只能出现在测试代码中，用于有意延长临界区，加速复现死锁的情况。不要用它切换其他线程，这是业余做法。
 生产代码中线程的等待分两种：    
 
