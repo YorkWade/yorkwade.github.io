@@ -147,11 +147,11 @@ class LengthHeaderCodec : boost::noncopyable
 };  
 ```
         复杂的情况使用状态机解码。
-编解码器（LengthHeaderCodec）</br>
+### 编解码器（LengthHeaderCodec）</br>
         应该让用户代码只关心“消息到达”而不是“数据到达”。</br>
         codec 的基本功能之一是做 TCP 分包：确定每条消息的长度，为消息划分界限。在 non-blocking 网络编程中，codec 几乎是必不可少的。如果只收到了半条消息，那么不会触发消息回调，数据会停留在 Buffer 里（数据已经读到 Buffer 中了），等待收到一个完整的消息再通知处理函数。</br>    
 
-为什么non-blocking 网络编程中应用层buffer是必须的</br>
+### 为什么non-blocking 网络编程中应用层buffer是必须的</br>
   C10k问题。  《The C10K problem》</br>
 《The C10K problem》英文原版地址：http://www.kegel.com/c10k.html</br>
 《The C10K problem》中文译文地址：地址1、地址2</br>
@@ -171,15 +171,15 @@ TCP 是一个无边界的字节流协议，接收方必须要处理“收到的�
 分两次收到，第一次 10k，第二次 10k
 分三次收到，第一次 6k，第二次 8k，第三次 6k
 ```
-其他任何可能
-网络库在处理“socket 可读”事件的时候，必须一次性把 socket 里的数据读完（从操作系统 buffer 搬到应用层 buffer），否则会反复触发 POLLIN 事件，造成 busy-loop。（Again, Muduo EventLoop 采用的是 epoll level trigger，这么做的具体原因我以后再说。）
-那么网络库必然要应对“数据不完整”的情况，收到的数据先放到 input buffer 里，等构成一条完整的消息再通知程序的业务逻辑。这通常是 codec 的职责，见陈硕《Muduo 网络编程示例之二：Boost.Asio 的聊天服务器》一文中的“TCP 分包”的论述与代码。
-所以，在 tcp 网络编程中，网络库必须要给每个 tcp connection 配置 input buffer。
+其他任何可能</br>
+网络库在处理“socket 可读”事件的时候，必须一次性把 socket 里的数据读完（从操作系统 buffer 搬到应用层 buffer），否则会反复触发 POLLIN 事件，造成 busy-loop。（Again, Muduo EventLoop 采用的是 epoll level trigger，这么做的具体原因我以后再说。）</br>
+那么网络库必然要应对“数据不完整”的情况，收到的数据先放到 input buffer 里，等构成一条完整的消息再通知程序的业务逻辑。这通常是 codec 的职责，见陈硕《Muduo 网络编程示例之二：Boost.Asio 的聊天服务器》一文中的“TCP 分包”的论述与代码。</br>
+所以，在 tcp 网络编程中，网络库必须要给每个 tcp connection 配置 input buffer。</br>
 
         muduo采用epoll的level trigger，1、与传统poll兼容；2、易于编程；3、不必等待出现EAGIN。
 
-Muduo Buffer 的设计考虑了常见的网络编程需求，试图在易用性和性能之间找一个平衡点，目前这个平衡点更偏向于易用性。
-        buffer设计参考Netty的ChannelBuffer和libevent 1.4x的evbuffer。
+Muduo Buffer 的设计考虑了常见的网络编程需求，试图在易用性和性能之间找一个平衡点，目前这个平衡点更偏向于易用性。</br>
+        buffer设计参考Netty的ChannelBuffer和libevent 1.4x的evbuffer。</br>
 ### Muduo Buffer 的设计要点：
 对外表现为一块连续的内存(char*, len)，以方便客户代码的编写。
 其 size() 可以自动增长，以适应不同大小的消息。它不是一个 fixed size array (即 char buf[8192])。
@@ -230,13 +230,13 @@ ame自动创建message对象。
 从协议层面设计区分消息类型。
 protobuf有意不加长度和消息类型，只有在使用tcp长连接，且在一个连接上传递不止一种消息的情况下，需要上种打包方式（长度和类型）。
 tcp收到数据，需要Codec编解码拦截（半条消息），收到完整消息后，需要dispatcher根据消息类型，通过维护消息到回到函数的映射，分发给相应的回调函数。
-定时器
+### 定时器
 时间相关任务：
 1、获取当前时间，计算时间间隔。计时使用gettimeofday(毫秒级)，用户态调用开销小
 2、转换时区和日期计算。使用tz database(也叫tzdata，多线程可能有问题)
 3、定时操作。定时使用timerfd_create、timerfd_gettime、timerfd_settime。把时间变成文件描述符，融入reactor。不用sleep
 计算统计吞吐量：每秒发送的字节数
-测量网络延时：通过协议（NTP）计算。
+### 测量网络延时：通过协议（NTP）计算。
 
 
 时间差：校时使用，注意server和client不再一个时钟域，需要用时钟偏移（clock offset）矫正。在实际应用中，clock offset 要经过一个低通滤波才能使用，不然偶然性太大。
@@ -278,7 +278,7 @@ timing wheel 中的每个格子是个 hash set，可以容纳不止一个连接�
 
 
 now-lastReceivetTime>timeout，需要全局只有一个repeated timer，而且每次要检查。
-广播服务
+### 广播服务
         分布式的观察者模型，增加多个subscriber，不用修改publisher，实现解耦。
         
 
@@ -286,13 +286,13 @@ now-lastReceivetTime>timeout，需要全局只有一个repeated timer，而且�
 应用层广播在分布式系统中涌出很大。如体育比分转播，负载监控，状态监控trouble shooting。
  广播中，要将消息发送给1000个订阅者，只能一个个发。多线程使用一个全局锁会把多线程退化成单线程执行。  thread local 技巧，把1000个订阅分给4个线程，每个线程的操作基本是无锁的。代码见examples/asio/chat/server_threaded_highperformance.cc
 
-串并转换
+### 串并转换
        把多个客户连接汇聚城一个内部tcp连接，让backend专心处理业务，无须关系多连接的并发。
         
 
         当从 client connection 收到数据，如何得知其 id ？
         boost::any 存放connection id
-socks4a代理服务器
+### socks4a代理服务器
         
 
             tunnel
