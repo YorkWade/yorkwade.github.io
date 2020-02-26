@@ -186,23 +186,28 @@ Muduo Buffer 的设计考虑了常见的网络编程需求，试图在易用性�
 内部以 vector of char 来保存数据，并提供相应的访问函数。
 Buffer 其实像是一个 queue，从末尾写入数据，从头部读出数据
 
+![](https://images.cnblogs.com/cnblogs_com/Solstice/201104/201104171223595707.png)
 
+![](https://images.cnblogs.com/cnblogs_com/Solstice/201104/201104171223592850.png)
 
 readIndex 和 writeIndex 满足以下不变式(invariant):
 0 ≤ readIndex ≤ writeIndex ≤ data.size()
 
 buffer操作
 1、初始状态：
+![](https://images.cnblogs.com/cnblogs_com/Solstice/201104/201104171223592817.png)
 
 2、如果有人向 Buffer 写入了 200 字节，那么其布局是：
+![](https://images.cnblogs.com/cnblogs_com/Solstice/201104/201104171224005292.png)
 
 3、如果有人从 Buffer read() & retrieve() （下称“读入”）了 50 字节
+![](https://images.cnblogs.com/cnblogs_com/Solstice/201104/201104171224009719.png)
 
 4、然后又写入了 200 字节，writeIndex 向后移动了 200 字节，readIndex 保持不变
-
+![](https://images.cnblogs.com/cnblogs_com/Solstice/201104/201104171224007734.png)
 
 5、接下来，一次性读入 350 字节，请注意，由于全部数据读完了，readIndex 和 writeIndex 返回原位以备新一轮使用
-
+![](https://images.cnblogs.com/cnblogs_com/Solstice/201104/20110417122400209.png)
 
 
 解决减少内存占用（如果有 10k 个连接，每个连接一建立就分配 64k 的读缓冲的话，将占用 640M 内存，而大多数时候这些缓冲区的使用率很低。）
@@ -213,6 +218,8 @@ buffer的size() 可以自动增长
 ***Zero copy ?***
 如果对性能有极高的要求，受不了 copy() 与 resize()，那么可以考虑实现分段连续的 zero copy buffer 再配合 gather scatter IO
 libevent 2.0.x 的设计方案。TCPv2介绍的 BSD TCP/IP 实现中的 mbuf 也是类似的方案，Linux 的 sk_buff 估计也差不多
+
+![](https://images.cnblogs.com/cnblogs_com/Solstice/201104/201104171224051699.png)
 
 性能
         prepend预留8字节空间，是为了序列化消息后，在前面添加消息长度，用空间换时间。
