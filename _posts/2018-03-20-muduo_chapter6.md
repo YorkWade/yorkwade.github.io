@@ -11,17 +11,17 @@ tags:
 ---
 
 
-muduo是静态库 分布式系统发布动态库成本很高
-核心库之依赖TR1
-muduo库，只需要掌握5个关键类，Buffer，EventLoop，TcpConnection，TcpClient，TcpServer
-Buffer仿Netty ChannelBuffer的buffer class。用户不需要调用read/write
-InetAddress不解析域名，gethostbyname解析域名会阻塞IO线程。
-Socket是RAII handle，
-Poller是Poller和EPollPoller基类，采用“电平触发”.(水平触发)
-线程模型：TcpServer支持1、单线程（accept和TcpConnection同一个线程做IO）2、多线程（accept与Eventloop同一个线程，另外创建一个EventLoopThreadPool，新到的连接会按照round-robin分配到线程池中)
-tcp网络编程本质论
-转换思维模式：
-        由“主动调用recv、accept、send的思路”转变成“注册回调函数，事件通知"。基于事件的非阻塞网络编程，是编写高性能并发网络服务程序的主流模式。（类似win32消息循环，避免使用阻塞调用，使得窗口失去响应。）
+muduo是静态库 分布式系统发布动态库成本很高</br>
+核心库之依赖TR1</br>
+muduo库，只需要掌握5个关键类，Buffer，EventLoop，TcpConnection，TcpClient，TcpServer</br>
+Buffer仿Netty ChannelBuffer的buffer class。用户不需要调用read/write</br>
+InetAddress不解析域名，gethostbyname解析域名会阻塞IO线程。</br>
+Socket是RAII handle，</br>
+Poller是Poller和EPollPoller基类，采用“电平触发”.(水平触发)</br>
+线程模型：TcpServer支持1、单线程（accept和TcpConnection同一个线程做IO）2、多线程（accept与Eventloop同一个线程，另外创建一个EventLoopThreadPool，新到的连接会按照round-robin分配到线程池中)</br>
+tcp网络编程本质论</br>
+转换思维模式：</br>
+        由“主动调用recv、accept、send的思路”转变成“注册回调函数，事件通知"。基于事件的非阻塞网络编程，是编写高性能并发网络服务程序的主流模式。（类似win32消息循环，避免使用阻塞调用，使得窗口失去响应。）</br>
 
 基于事件的非阻塞网络编程主要是处理三个半事件：
 
@@ -30,20 +30,20 @@ tcp网络编程本质论
         3、消息到达事件（处理分包、缓冲区设计等）。
         4、消息发送完毕的半个事件（低流量服务不关心，如何保证先发送完缓冲区的数据再断开连接，shutdown半关闭）。
 
-基于事件的非阻塞网络编程存在的问题：
+基于事件的非阻塞网络编程存在的问题：</br>
 
-        1、如果要主动关闭，如何保证对方已经收到全部数据？
- 	2、如果应用有缓存，如何保证先发送完缓冲中的数据，再断连接？
- 	3、客户端如何定期重试？
-        4、用边沿触发（edge trigger）还是电平触发（level trigger）。如果是电平触发，何时关注EPOLLOUT事件？会不会造成busy-loop？如果是边缘触发，如何便面漏读造成饥饿？epoll一定比poll快吗？
-        5、为什么要使用应用层发送缓冲区？假设应用要发送40kb，但操作系统的tcp发送缓冲区只有25kb，那么剩下的15kb怎么办？tcp发送缓冲区小于发送的数据，不能等待os缓冲区可用（会阻塞），应用层应缓存起来，等socket可写，立即发送数据，若程序要发送新的数据前，有未发出的数据，应该追加得到缓冲区末尾，一并发出，防止打乱数据顺序。
-        6、为什么要使用应用层接受缓冲区？如果一次收到的数据不够一个完整数据包，应缓存在应用层缓冲区里，等剩余数据收到后一并处理。如果数据分小段频繁到达，都触发文件描述符可读事件程序能否还能正常工作。
-        7、如何设计并使用缓冲区？我们，减少系统调用，一次读取很多数。如果连接数很多，每个连接都分配各自的缓冲区，内存将很大，并且大多数时候这些缓冲区的使用率很低，怎么办？
-        8、如何做应用层的流量控制？如果接受处理缓慢，数据会不会一直堆积在发送方，造成内存暴涨。
-        9、如何实现定时器？并使之与网络io在一个线程，以避免锁。
-python twisted是一款非常好的网络库，也采用reactor作为基本模型。
-可用telnet扮演客户端测试程序。
-性能评测
+   1、如果要主动关闭，如何保证对方已经收到全部数据？</br>
+   2、如果应用有缓存，如何保证先发送完缓冲中的数据，再断连接？</br>
+   3、客户端如何定期重试？</br>
+   4、用边沿触发（edge trigger）还是电平触发（level trigger）。如果是电平触发，何时关注EPOLLOUT事件？会不会造成busy-loop？如果是边缘触发，如何便面漏读造成饥饿？epoll一定比poll快吗？</br>
+   5、为什么要使用应用层发送缓冲区？假设应用要发送40kb，但操作系统的tcp发送缓冲区只有25kb，那么剩下的15kb怎么办？tcp发送缓冲区小于发送的数据，不能等待os缓冲区可用（会阻塞），应用层应缓存起来，等socket可写，立即发送数据，若程序要发送新的数据前，有未发出的数据，应该追加得到缓冲区末尾，一并发出，防止打乱数据顺序。</br>
+   6、为什么要使用应用层接受缓冲区？如果一次收到的数据不够一个完整数据包，应缓存在应用层缓冲区里，等剩余数据收到后一并处理。如果数据分小段频繁到达，都触发文件描述符可读事件程序能否还能正常工作。</br>
+   7、如何设计并使用缓冲区？我们，减少系统调用，一次读取很多数。如果连接数很多，每个连接都分配各自的缓冲区，内存将很大，并且大多数时候这些缓冲区的使用率很低，怎么办？</br>
+   8、如何做应用层的流量控制？如果接受处理缓慢，数据会不会一直堆积在发送方，造成内存暴涨。</br>
+   9、如何实现定时器？并使之与网络io在一个线程，以避免锁。</br>
+python twisted是一款非常好的网络库，也采用reactor作为基本模型。</br>
+可用telnet扮演客户端测试程序。</br>
+性能评测</br>
 测试对象：
 
 	1、boost 1.4.0中的asio 1.4.3
@@ -52,37 +52,37 @@ python twisted是一款非常好的网络库，也采用reactor作为基本模�
 	4、muduo 0.0.1
 方法：        
 
-        1、[asio的测试代码](http://asio.cvs.sourceforge.net/viewvc/asio/asio/src/tests/performance)\[asio性能测试方法](http://think-async.com/Asio/LinuxPerformanceImprovements)
- 	2、使用pingpong协议测试吞吐量的常用方法。pingpong协议：客户端是服务器都实现echo协议。源自asio性能测试。pingpong消息的大小均为16kb。muduo吞吐量大于libevent2的原因：libevent2一次最多从网络中读取4096字节，而moduo为16384，系统调用少。
-        3、击鼓传花方法，1000个网络连接，从第一个连接写一个字节，从这个连接的另一头读出这个字节，再发给第2个连接，一次类推，记录开始到结束时间，比较谁更早结束。源自libevent的性能测试文档。
-        4、章亦春的HTTP echo模块。
-        5、[ZeroMQ自带的延迟和吞吐量测试](http://www.zeromq/results:perf-howtopingpong)翻版。
+   1、[asio的测试代码](http://asio.cvs.sourceforge.net/viewvc/asio/asio/src/tests/performance)\[asio性能测试方法](http://think-async.com/Asio/LinuxPerformanceImprovements)</br>
+   2、使用pingpong协议测试吞吐量的常用方法。pingpong协议：客户端是服务器都实现echo协议。源自asio性能测试。pingpong消息的大小均为16kb。muduo吞吐量大于libevent2的原因：libevent2一次最多从网络中读取4096字节，而moduo为16384，系统调用少。</br>
+   3、击鼓传花方法，1000个网络连接，从第一个连接写一个字节，从这个连接的另一头读出这个字节，再发给第2个连接，一次类推，记录开始到结束时间，比较谁更早结束。源自libevent的性能测试文档。</br>
+   4、章亦春的HTTP echo模块。</br>
+   5、[ZeroMQ自带的延迟和吞吐量测试](http://www.zeromq/results:perf-howtopingpong)翻版。</br>
 
 
-Parallel Pipelining的意义[《以小见大-那些基于protobuf的五花八门的RPC(2)》](http://blog.csdn.net/lanphaday/archive/2011/04/11/6316099.aspx)
-[《分布式系统的工程化开发方法》](http://blog.csdn.net/Solstice/article/details/5950190)
-[《谈谈数独》](http://blog.csdn.net/Solstice/article/details/2096209)
-Sudoku 是一个计算密集型的任务（见7.4中关于性能的分析），其瓶颈在于cpu。
+Parallel Pipelining的意义[《以小见大-那些基于protobuf的五花八门的RPC(2)》](http://blog.csdn.net/lanphaday/archive/2011/04/11/6316099.aspx)</br>
+[《分布式系统的工程化开发方法》](http://blog.csdn.net/Solstice/article/details/5950190)</br>
+[《谈谈数独》](http://blog.csdn.net/Solstice/article/details/2096209)</br>
+Sudoku 是一个计算密集型的任务（见7.4中关于性能的分析），其瓶颈在于cpu。</br>
 
 负载均衡（Load Balance）
 
-常见的并发网络服务器程序设计方案
-可伸缩性网络编程，POSA2已经进行相当全面的总结，还有另外三篇值得思考的
-http://bulk.fefe.de/scalable-networking.pdf
-http://www.kegel.com/c10k.html
-http://gee.cs.oswego.edu/dl/cpjslides/nio.pdf
-在reactor的线程中，如果收到数据进行延迟操作，不应该适用sleep之类的阻塞调用，正确做法：应该注册超时回调。
+常见的并发网络服务器程序设计方案</br>
+可伸缩性网络编程，POSA2已经进行相当全面的总结，还有另外三篇值得思考的</br>
+http://bulk.fefe.de/scalable-networking.pdf</br>
+http://www.kegel.com/c10k.html</br>
+http://gee.cs.oswego.edu/dl/cpjslides/nio.pdf</br>
+在reactor的线程中，如果收到数据进行延迟操作，不应该适用sleep之类的阻塞调用，正确做法：应该注册超时回调。</br>
 
 ![](https://gitee.com/yorkwade/blog_picture/raw/88ac2c28b83293534ee6753ab105675244168c4a/muduo_ch6_concurrent_model.bmp)
 
-	方案0：accept +read/write
+- 方案0：accept +read/write
             阻塞IO，一次服务一个客户。
-	方案1：accept+fork
+- 方案1：accept+fork
             process-per-connection。
-	方案2：accept+thread
+- 方案2：accept+thread
             thread-pe-connection。 
-	方案3：prefork
-	方案4：pre threaded
+- 方案3：prefork
+- 方案4：pre threaded
 前四种都属于阻塞式网络编程。
 
 	方案5：reactor
@@ -92,17 +92,17 @@ reactor的意义在于将消息（IO事件）分发到用户提供的处理函�
 适合IO密集型的应用，不适合cpu密集型的应用。注意：避免在事件回调中执行耗时操作，阻塞线程。（与windows消息循环非常类似）
  	注意由于只有一个线程，因此事件是顺序处理的，一个线程同时只能做一件事情。事件的优先级不能保证，因为从poll返回之后到下一次调用poll进入等待之前这段时间内，线程不会被其他链接上的数据或事件抢占。如果我们想延迟计算（把compute()推迟100ms），那么也不能用sleep()之类的阻塞调用，而应该注册超时回调，以避免阻塞当前IO线程。
 	
-	方案6：reactor+thread-per-task
+- 方案6：reactor+thread-per-task
             创建线程有开销，可以用threadpool避免。计算有乱序情况，可以用协议中使用id区分。
-	方案7：reactor+workthread
+- 方案7：reactor+workthread
             一个计算线程方案。workthread，不能充分利用cpu。最多占用12.5%的cpu资源。不会乱序。
-	方案8：reactor+threadpool
+- 方案8：reactor+threadpool
             如果IO的压力比较大，reactor处理不过来，使用方案9。
-	方案9：reactors in threads（reactor pool）
+- 方案9：reactors in threads（reactor pool）
             muduo内置的多线程方案，也是netty内置的多线程方案。有一个主的reactor，负责accept接收连接，然后把连接挂到某个sub reactor上（采用round-robin方式选择sub reactor），并在那个sub reactor中完成该连接的所有 操作。由于一个链接完全由一个线程管理，那么请求的顺序性可以保证。该方案解决方案8一个reactor出现处理饱和。优化突然请求，可考虑方案11.
-	方案10：reactors in processes
+- 方案10：reactors in processes
             Nginx的内置方案。如果连接之间无交互，该方案是很好选择，可以热升级。
-	方案11：reactors+threadpool
+- 方案11：reactors+threadpool
             方案8和方案9混合。适应突发IO处理（reactors）,又能适应突发计算（thread pool）。reactors的个数的设置：ZeroMQ给出建议（http://www.zeromq.org/area:faq#toc3），按照每千兆比特每秒的吞吐量配一个reactor的比例，设置个数。运行在千兆以太网上的网络程序，并且没有计算量（可忽略），并且连接没有优先级之分，用一个reactor就足以应付网络IO。如果tcp连接有优先级之分，正确的做法：把优先级高的连接单独用一个reactor来处理。
 
 ![](https://gitee.com/yorkwade/blog_picture/raw/master/muduo_ch6.PNG)
@@ -121,7 +121,7 @@ reactor的意义在于将消息（IO事件）分发到用户提供的处理函�
    边缘触发 是指每当状态变化时发生一个io事件；
    条件触发 是只要满足条件就发生一个io事件；
 ### 详述 
-                int select(int n, fd_set *rd_fds, fd_set *wr_fds, fd_set *ex_fds, struct timeval *timeout);
+  int select(int n, fd_set *rd_fds, fd_set *wr_fds, fd_set *ex_fds, struct timeval *timeout);
      select用到了fd_set结构,此处有一个FD_SETSIZE决定fd_set的容量，FD_SETSIZE默认1024，可以通过ulimit -n或者setrlimit函数修改之。
                 int poll(struct pollfd *ufds, unsigned int nfds, int timeout);
      作为select的替代品，poll的参数用struct pollfd数组(第一个参数)来取代fd_set，数组大小自己定义，这样的话避免了FD_SETSIZE给程序带来的麻烦。
