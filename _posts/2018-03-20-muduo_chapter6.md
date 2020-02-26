@@ -105,6 +105,8 @@ reactor的意义在于将消息（IO事件）分发到用户提供的处理函�
 	方案11：reactors+threadpool
             方案8和方案9混合。适应突发IO处理（reactors）,又能适应突发计算（thread pool）。reactors的个数的设置：ZeroMQ给出建议（http://www.zeromq.org/area:faq#toc3），按照每千兆比特每秒的吞吐量配一个reactor的比例，设置个数。运行在千兆以太网上的网络程序，并且没有计算量（可忽略），并且连接没有优先级之分，用一个reactor就足以应付网络IO。如果tcp连接有优先级之分，正确的做法：把优先级高的连接单独用一个reactor来处理。
 
+![](https://gitee.com/yorkwade/blog_picture/raw/master/muduo_ch6.PNG)
+
 ## 我的总结：
         1、基于事件的非阻塞网络编程，是编写高性能并发网络服务程序的主流模式。
         2、基于事件的非阻塞网络编程主要是处理三个半事件：（连接建立、连接断开、消息到达、消息发送完毕（半））
