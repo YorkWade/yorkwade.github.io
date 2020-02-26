@@ -73,6 +73,8 @@ http://www.kegel.com/c10k.html
 http://gee.cs.oswego.edu/dl/cpjslides/nio.pdf
 在reactor的线程中，如果收到数据进行延迟操作，不应该适用sleep之类的阻塞调用，正确做法：应该注册超时回调。
 
+![](https://gitee.com/yorkwade/blog_picture.git)
+
 	方案0：accept +read/write
             阻塞IO，一次服务一个客户。
 	方案1：accept+fork
