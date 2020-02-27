@@ -181,51 +181,51 @@ TCP 是一个无边界的字节流协议，接收方必须要处理“收到的�
 Muduo Buffer 的设计考虑了常见的网络编程需求，试图在易用性和性能之间找一个平衡点，目前这个平衡点更偏向于易用性。</br>
         buffer设计参考Netty的ChannelBuffer和libevent 1.4x的evbuffer。</br>
 ### Muduo Buffer 的设计要点：
-对外表现为一块连续的内存(char*, len)，以方便客户代码的编写。
-其 size() 可以自动增长，以适应不同大小的消息。它不是一个 fixed size array (即 char buf[8192])。
-内部以 vector of char 来保存数据，并提供相应的访问函数。
-Buffer 其实像是一个 queue，从末尾写入数据，从头部读出数据
+对外表现为一块连续的内存(char*, len)，以方便客户代码的编写。</br>
+其 size() 可以自动增长，以适应不同大小的消息。它不是一个 fixed size array (即 char buf[8192])。</br>
+内部以 vector of char 来保存数据，并提供相应的访问函数。</br>
+Buffer 其实像是一个 queue，从末尾写入数据，从头部读出数据</br>
 
 ![](https://images.cnblogs.com/cnblogs_com/Solstice/201104/201104171223595707.png)
 
 ![](https://images.cnblogs.com/cnblogs_com/Solstice/201104/201104171223592850.png)
 
-readIndex 和 writeIndex 满足以下不变式(invariant):
-0 ≤ readIndex ≤ writeIndex ≤ data.size()
+readIndex 和 writeIndex 满足以下不变式(invariant):</br>
+0 ≤ readIndex ≤ writeIndex ≤ data.size()</br>
 
-buffer操作
-1、初始状态：
+buffer操作</br>
+1、初始状态：</br>
 ![](https://images.cnblogs.com/cnblogs_com/Solstice/201104/201104171223592817.png)
 
-2、如果有人向 Buffer 写入了 200 字节，那么其布局是：
+2、如果有人向 Buffer 写入了 200 字节，那么其布局是：</br>
 ![](https://images.cnblogs.com/cnblogs_com/Solstice/201104/201104171224005292.png)
 
-3、如果有人从 Buffer read() & retrieve() （下称“读入”）了 50 字节
+3、如果有人从 Buffer read() & retrieve() （下称“读入”）了 50 字节</br>
 ![](https://images.cnblogs.com/cnblogs_com/Solstice/201104/201104171224009719.png)
 
-4、然后又写入了 200 字节，writeIndex 向后移动了 200 字节，readIndex 保持不变
+4、然后又写入了 200 字节，writeIndex 向后移动了 200 字节，readIndex 保持不变</br>
 ![](https://images.cnblogs.com/cnblogs_com/Solstice/201104/201104171224007734.png)
 
-5、接下来，一次性读入 350 字节，请注意，由于全部数据读完了，readIndex 和 writeIndex 返回原位以备新一轮使用
+5、接下来，一次性读入 350 字节，请注意，由于全部数据读完了，readIndex 和 writeIndex 返回原位以备新一轮使用</br>
 ![](https://images.cnblogs.com/cnblogs_com/Solstice/201104/20110417122400209.png)
 
 
-解决减少内存占用（如果有 10k 个连接，每个连接一建立就分配 64k 的读缓冲的话，将占用 640M 内存，而大多数时候这些缓冲区的使用率很低。）
-        在栈上准备一个 65536 字节的 stackbuf，然后利用 readv() 来读取数据，iovec 有两块，第一块指向 muduo Buffer 中的 writable 字节，另一块指向栈上的 stackbuf。这样如果读入的数据不多，那么全部都读到 Buffer 中去了；如果长度超过 Buffer 的 writable 字节数，就会读到栈上的 stackbuf 里，然后程序再把 stackbuf 里的数据 append 到 Buffer 中。利用了临时栈上空间，避免开巨大 Buffer 造成的内存浪费，也避免反复调用 read() 的系统开销（通常一次 readv() 系统调用就能读完全部数据）
-buffer的size() 可以自动增长
-        内部使用vector，当内存空间不够时，vector会重新分配空间，原来的指针会失效，所以使用int类型的索引操作偏移，而不是指针。
+解决减少内存占用（如果有 10k 个连接，每个连接一建立就分配 64k 的读缓冲的话，将占用 640M 内存，而大多数时候这些缓冲区的使用率很低。）</br>
+        在栈上准备一个 65536 字节的 stackbuf，然后利用 readv() 来读取数据，iovec 有两块，第一块指向 muduo Buffer 中的 writable 字节，另一块指向栈上的 stackbuf。这样如果读入的数据不多，那么全部都读到 Buffer 中去了；如果长度超过 Buffer 的 writable 字节数，就会读到栈上的 stackbuf 里，然后程序再把 stackbuf 里的数据 append 到 Buffer 中。利用了临时栈上空间，避免开巨大 Buffer 造成的内存浪费，也避免反复调用 read() 的系统开销（通常一次 readv() 系统调用就能读完全部数据）</br>
+buffer的size() 可以自动增长</br>
+        内部使用vector，当内存空间不够时，vector会重新分配空间，原来的指针会失效，所以使用int类型的索引操作偏移，而不是指针。</br>
 
-***Zero copy ?***
+***Zero copy ?***</br>
 如果对性能有极高的要求，受不了 copy() 与 resize()，那么可以考虑实现分段连续的 zero copy buffer 再配合 gather scatter IO
-libevent 2.0.x 的设计方案。TCPv2介绍的 BSD TCP/IP 实现中的 mbuf 也是类似的方案，Linux 的 sk_buff 估计也差不多
+libevent 2.0.x 的设计方案。TCPv2介绍的 BSD TCP/IP 实现中的 mbuf 也是类似的方案，Linux 的 sk_buff 估计也差不多</br>
 
 ![](https://images.cnblogs.com/cnblogs_com/Solstice/201104/201104171224051699.png)
 
-性能
-        prepend预留8字节空间，是为了序列化消息后，在前面添加消息长度，用空间换时间。
-        目前最常用的千兆以太网的裸吞吐量是 125MB/s，扣除以太网 header、IP header、TCP header之后，应用层的吞吐率大约在 115 MB/s 上下。而现在服务器上最常用的 DDR2/DDR3 内存的带宽至少是 4GB/s，比千兆以太网高 40 倍以上。就是说，对于几 k 或几十 k 大小的数据，在内存里边拷几次根本不是问题，因为受以太网延迟和带宽的限制，跟这个程序通信的其他机器上的程序不会觉察到性能差异。
-        如果你实现的服务程序要跟数据库打交道，那么瓶颈常常在 DB 上，应该把精力投入在 DB 调优上。
-Muduo 的设计目标之一是吞吐量能让千兆以太网饱和，也就是每秒收发 120 兆字节的数据。这个很容易就达到，不用任何特别的努力。
+性能</br>
+        prepend预留8字节空间，是为了序列化消息后，在前面添加消息长度，用空间换时间。</br>
+        目前最常用的千兆以太网的裸吞吐量是 125MB/s，扣除以太网 header、IP header、TCP header之后，应用层的吞吐率大约在 115 MB/s 上下。而现在服务器上最常用的 DDR2/DDR3 内存的带宽至少是 4GB/s，比千兆以太网高 40 倍以上。就是说，对于几 k 或几十 k 大小的数据，在内存里边拷几次根本不是问题，因为受以太网延迟和带宽的限制，跟这个程序通信的其他机器上的程序不会觉察到性能差异。</br>
+        如果你实现的服务程序要跟数据库打交道，那么瓶颈常常在 DB 上，应该把精力投入在 DB 调优上。</br>
+Muduo 的设计目标之一是吞吐量能让千兆以太网饱和，也就是每秒收发 120 兆字节的数据。这个很容易就达到，不用任何特别的努力。</br>
 
 ### 使用Protobuf进行网络编程
         需要解决的问题：
@@ -235,14 +235,14 @@ ame自动创建message对象。
 
 ![](https://img-my.csdn.net/uploads/201104/3/0_13018174768fBe.gif)
 
-从协议层面设计区分消息类型。
-protobuf有意不加长度和消息类型，只有在使用tcp长连接，且在一个连接上传递不止一种消息的情况下，需要上种打包方式（长度和类型）。
-tcp收到数据，需要Codec编解码拦截（半条消息），收到完整消息后，需要dispatcher根据消息类型，通过维护消息到回到函数的映射，分发给相应的回调函数。
+从协议层面设计区分消息类型。</br>
+protobuf有意不加长度和消息类型，只有在使用tcp长连接，且在一个连接上传递不止一种消息的情况下，需要上种打包方式（长度和类型）。</br>
+tcp收到数据，需要Codec编解码拦截（半条消息），收到完整消息后，需要dispatcher根据消息类型，通过维护消息到回到函数的映射，分发给相应的回调函数。</br>
 ### 定时器
-时间相关任务：
-1、获取当前时间，计算时间间隔。计时使用gettimeofday(毫秒级)，用户态调用开销小
-2、转换时区和日期计算。使用tz database(也叫tzdata，多线程可能有问题)
-3、定时操作。定时使用timerfd_create、timerfd_gettime、timerfd_settime。把时间变成文件描述符，融入reactor。不用sleep
+时间相关任务：</br>
+    1、获取当前时间，计算时间间隔。计时使用gettimeofday(毫秒级)，用户态调用开销小</br>
+    2、转换时区和日期计算。使用tz database(也叫tzdata，多线程可能有问题)</br>
+    3、定时操作。定时使用timerfd_create、timerfd_gettime、timerfd_settime。把时间变成文件描述符，融入reactor。不用sleep</br>
 计算统计吞吐量：每秒发送的字节数
 ### 测量网络延时：通过协议（NTP）计算。
 
@@ -255,47 +255,65 @@ Nagle:广域网中，应用程序记录的发包时间与操作系统真正发�
        本文的代码见 http://code.google.com/p/muduo/source/browse/trunk/examples/idleconnection
 <Hashed and hierarchiacl timing wheels:efficient data structures for implementing a timer facility>  http://www.cs.columia.edu/~nahum/w6998/papers/sosp87-timing-wheels.pdf
 
-如果一个连接连续几秒钟（后文以 8s 为例）内没有收到数据，就把它断开，为此有两种简单粗暴的做法：
-每个连接保存“最后收到数据的时间 lastReceiveTime”，然后用一个定时器，每秒钟遍历一遍所有连接，断开那些 (now - connection.lastReceiveTime) > 8s 的 connection。这种做法全局只有一个 repeated timer，不过每次 timeout 都要检查全部连接，如果连接数目比较大（几千上万），这一步可能会比较费时。
-每个连接设置一个 one-shot timer，超时定为 8s，在超时的时候就断开本连接。当然，每次收到数据要去更新 timer。这种做法需要很多个 one-shot timer，会频繁地更新 timers。如果连接数目比较大，可能对 reactor 的 timer queue 造成压力。
-使用timing wheel能避免上述两种做法的缺点。连接超时不需要精确定时，只要大致 8 秒钟超时断开就行，多一秒少一秒关系不大。处理连接超时可以用一个简单的数据结构：8 个桶组成的循环队列。第一个桶放下一秒将要超时的连接，第二个放下 2 秒将要超时的连接。每个连接一收到数据就把自己放到第 8 个桶，然后在每秒钟的 callback 里把第一个桶里的连接断开，把这个空桶挪到队尾。这样大致可以做到 8 秒钟没有数据就超时断开连接。更重要的是，每次不用检查全部的 connection，只要检查第一个桶里的 connections，相当于把任务分散了。
-Simple timing wheel 的基本结构是一个循环队列（boost::circular_buffer），还有一个指向队尾的指针 (tail)，这个指针每秒钟移动一格，就像钟表上的时针，timing wheel 由此得名。
+如果一个连接连续几秒钟（后文以 8s 为例）内没有收到数据，就把它断开，为此有两种简单粗暴的做法：</br>
+每个连接保存“最后收到数据的时间 lastReceiveTime”，然后用一个定时器，每秒钟遍历一遍所有连接，断开那些 (now - connection.lastReceiveTime) > 8s 的 connection。这种做法全局只有一个 repeated timer，不过每次 timeout 都要检查全部连接，如果连接数目比较大（几千上万），这一步可能会比较费时。</br>
+每个连接设置一个 one-shot timer，超时定为 8s，在超时的时候就断开本连接。当然，每次收到数据要去更新 timer。这种做法需要很多个 one-shot timer，会频繁地更新 timers。如果连接数目比较大，可能对 reactor 的 timer queue 造成压力。</br>
+使用timing wheel能避免上述两种做法的缺点。连接超时不需要精确定时，只要大致 8 秒钟超时断开就行，多一秒少一秒关系不大。处理连接超时可以用一个简单的数据结构：8 个桶组成的循环队列。第一个桶放下一秒将要超时的连接，第二个放下 2 秒将要超时的连接。每个连接一收到数据就把自己放到第 8 个桶，然后在每秒钟的 callback 里把第一个桶里的连接断开，把这个空桶挪到队尾。这样大致可以做到 8 秒钟没有数据就超时断开连接。更重要的是，每次不用检查全部的 connection，只要检查第一个桶里的 connections，相当于把任务分散了。</br>
+Simple timing wheel 的基本结构是一个循环队列（boost::circular_buffer），还有一个指向队尾的指针 (tail)，这个指针每秒钟移动一格，就像钟表上的时针，timing wheel 由此得名。</br>
 
-连接超时被踢掉的过程
-假设在某个时刻，conn 1 到达，把它放到当前格子中，它的剩余寿命是 7 秒。此后 conn 1 上没有收到数据。
+连接超时被踢掉的过程</br>
+假设在某个时刻，conn 1 到达，把它放到当前格子中，它的剩余寿命是 7 秒。此后 conn 1 上没有收到数据。</br>
 
 ![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/201105042122324953.png)
 
-1 秒钟之后，tail 指向下一个格子，conn 1 的剩余寿命是 6 秒。
+1 秒钟之后，tail 指向下一个格子，conn 1 的剩余寿命是 6 秒。</br>
+
 ![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/201105042122471449.png)
-又过了几秒钟，tail 指向 conn 1 之前的那个格子，conn 1 即将被断开。
+
+又过了几秒钟，tail 指向 conn 1 之前的那个格子，conn 1 即将被断开。</br>
+
 ![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/201105042122499790.png)
-下一秒，tail 重新指向 conn 1 原来所在的格子，清空其中的数据，断开 conn 1 连接。
+
+下一秒，tail 重新指向 conn 1 原来所在的格子，清空其中的数据，断开 conn 1 连接。</br>
+
 ![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/201105042122549752.png)
-连接刷新
-如果在断开 conn 1 之前收到数据，就把它移到当前的格子里。
+
+连接刷新</br>
+如果在断开 conn 1 之前收到数据，就把它移到当前的格子里。</br>
+
 ![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/201105042123001109.png)
-收到数据，conn 1 的寿命延长为 7 秒。
+
+收到数据，conn 1 的寿命延长为 7 秒。</br>
+
 ![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/201105042123052010.png)
-时间继续前进，conn 1 寿命递减，不过它已经比第一种情况长寿了。
+
+时间继续前进，conn 1 寿命递减，不过它已经比第一种情况长寿了。</br>
+
 ![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/20110504212226597.png)
-多个连接
-timing wheel 中的每个格子是个 hash set，可以容纳不止一个连接。
-比如一开始，conn 1 到达。
+
+多个连接</br>
+timing wheel 中的每个格子是个 hash set，可以容纳不止一个连接。</br>
+比如一开始，conn 1 到达。</br>
+
 ![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/201105042123064353.png)
-随后，conn 2 到达，这时候 tail 还没有移动，两个连接位于同一个格子中，具有相同的剩余寿命。（下图中画成链表，代码中是哈希表。）
+
+随后，conn 2 到达，这时候 tail 还没有移动，两个连接位于同一个格子中，具有相同的剩余寿命。（下图中画成链表，代码中是哈希表。）</br>
+
 ![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/201105042123187591.png)
-几秒钟之后，conn 1 收到数据，而 conn 2 一直没有收到数据，那么 conn 1 被移到当前的格子中。这时 conn 1 的寿命比 conn 2 长。
+
+几秒钟之后，conn 1 收到数据，而 conn 2 一直没有收到数据，那么 conn 1 被移到当前的格子中。这时 conn 1 的寿命比 conn 2 长。</br>
+
 ![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/201105042123207360.png)
 
-now-lastReceivetTime>timeout，需要全局只有一个repeated timer，而且每次要检查。
+now-lastReceivetTime>timeout，需要全局只有一个repeated timer，而且每次要检查。</br>
+
 ### 广播服务
         分布式的观察者模型，增加多个subscriber，不用修改publisher，实现解耦。
         
 
 
-应用层广播在分布式系统中涌出很大。如体育比分转播，负载监控，状态监控trouble shooting。
- 广播中，要将消息发送给1000个订阅者，只能一个个发。多线程使用一个全局锁会把多线程退化成单线程执行。  thread local 技巧，把1000个订阅分给4个线程，每个线程的操作基本是无锁的。代码见examples/asio/chat/server_threaded_highperformance.cc
+应用层广播在分布式系统中涌出很大。如体育比分转播，负载监控，状态监控trouble shooting。</br>
+ 广播中，要将消息发送给1000个订阅者，只能一个个发。多线程使用一个全局锁会把多线程退化成单线程执行。  thread local 技巧，把1000个订阅分给4个线程，每个线程的操作基本是无锁的。代码见examples/asio/chat/server_threaded_highperformance.cc</br>
 
 ### 串并转换
        把多个客户连接汇聚城一个内部tcp连接，让backend专心处理业务，无须关系多连接的并发。
