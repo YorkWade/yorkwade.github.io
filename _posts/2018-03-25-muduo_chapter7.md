@@ -310,7 +310,7 @@ now-lastReceivetTime>timeout，需要全局只有一个repeated timer，而且�
 ### 广播服务
         分布式的观察者模型，增加多个subscriber，不用修改publisher，实现解耦。
         
-
+![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/20110525232158265.png)
 
 应用层广播在分布式系统中涌出很大。如体育比分转播，负载监控，状态监控trouble shooting。</br>
  广播中，要将消息发送给1000个订阅者，只能一个个发。多线程使用一个全局锁会把多线程退化成单线程执行。  thread local 技巧，把1000个订阅分给4个线程，每个线程的操作基本是无锁的。代码见examples/asio/chat/server_threaded_highperformance.cc</br>
@@ -318,11 +318,12 @@ now-lastReceivetTime>timeout，需要全局只有一个repeated timer，而且�
 ### 串并转换
        把多个客户连接汇聚城一个内部tcp连接，让backend专心处理业务，无须关系多连接的并发。
         
+![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/201105021948364782.png)
 
         当从 client connection 收到数据，如何得知其 id ？
         boost::any 存放connection id
 ### socks4a代理服务器
-        
+  ![](https://images.cnblogs.com/cnblogs_com/Solstice/201106/201106022302311414.png)      
 
             tunnel
 Socks4a 的协议非常简单，请参考维基百科 http://en.wikipedia.org/wiki/SOCKS#SOCKS_4a 。
