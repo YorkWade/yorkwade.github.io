@@ -246,6 +246,7 @@ tcp收到数据，需要Codec编解码拦截（半条消息），收到完整消
 计算统计吞吐量：每秒发送的字节数
 ### 测量网络延时：通过协议（NTP）计算。
 
+![](https://images.cnblogs.com/cnblogs_com/Solstice/201104/201104200926372166.png)
 
 时间差：校时使用，注意server和client不再一个时钟域，需要用时钟偏移（clock offset）矫正。在实际应用中，clock offset 要经过一个低通滤波才能使用，不然偶然性太大。
 Nagle:广域网中，应用程序记录的发包时间与操作系统真正发包时间差不再是可以忽略的小间隔，需要设置TCP_NODELAY参数。
@@ -263,27 +264,29 @@ Simple timing wheel 的基本结构是一个循环队列（boost::circular_buffe
 连接超时被踢掉的过程
 假设在某个时刻，conn 1 到达，把它放到当前格子中，它的剩余寿命是 7 秒。此后 conn 1 上没有收到数据。
 
+![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/201105042122324953.png)
+
 1 秒钟之后，tail 指向下一个格子，conn 1 的剩余寿命是 6 秒。
-
+![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/201105042122471449.png)
 又过了几秒钟，tail 指向 conn 1 之前的那个格子，conn 1 即将被断开。
-
+![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/201105042122499790.png)
 下一秒，tail 重新指向 conn 1 原来所在的格子，清空其中的数据，断开 conn 1 连接。
-
+![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/201105042122549752.png)
 连接刷新
 如果在断开 conn 1 之前收到数据，就把它移到当前的格子里。
-
+![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/201105042123001109.png)
 收到数据，conn 1 的寿命延长为 7 秒。
-
+![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/201105042123052010.png)
 时间继续前进，conn 1 寿命递减，不过它已经比第一种情况长寿了。
-
+![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/20110504212226597.png)
 多个连接
 timing wheel 中的每个格子是个 hash set，可以容纳不止一个连接。
 比如一开始，conn 1 到达。
-
+![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/201105042123064353.png)
 随后，conn 2 到达，这时候 tail 还没有移动，两个连接位于同一个格子中，具有相同的剩余寿命。（下图中画成链表，代码中是哈希表。）
-
+![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/201105042123187591.png)
 几秒钟之后，conn 1 收到数据，而 conn 2 一直没有收到数据，那么 conn 1 被移到当前的格子中。这时 conn 1 的寿命比 conn 2 长。
-
+![](https://images.cnblogs.com/cnblogs_com/Solstice/201105/201105042123207360.png)
 
 now-lastReceivetTime>timeout，需要全局只有一个repeated timer，而且每次要检查。
 ### 广播服务
