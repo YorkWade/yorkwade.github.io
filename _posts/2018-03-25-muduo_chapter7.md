@@ -345,21 +345,20 @@ Socks4a 的协议非常简单，请参考维基百科 http://en.wikipedia.org/wi
 tcp半关闭：连接的一端结束它发送后还能接受来自另一端数据。
 ## 附录2：thread local
         ThreadLocal是什么
-　　早在JDK 1.2的版本中就提供java.lang.ThreadLocal，ThreadLocal为解决多线程程序的并发问题提供了一种新的思路。使用这个工具类可以很简洁地编写出优美的多线程程序。
-　　当使用ThreadLocal维护变量时，ThreadLocal为每个使用该变量的线程提供独立的变量副本，所以每一个线程都可以独立地改变自己的副本，而不会影响其它线程所对应的副本。
-　　从线程的角度看，目标变量就象是线程的本地变量，这也是类名中“Local”所要表达的意思。
-　　所以，在Java中编写线程局部变量的代码相对来说要笨拙一些，因此造成线程局部变量没有在Java开发者中得到很好的普及。
-ThreadLocal的接口方法
-ThreadLocal类接口很简单，只有4个方法，我们先来了解一下：
-void set(Object value)设置当前线程的线程局部变量的值。
-public Object get()该方法返回当前线程所对应的线程局部变量。
-public void remove()将当前线程局部变量的值删除，目的是为了减少内存的占用，该方法是JDK 5.0新增的方法。需要指出的是，当线程结束后，对应该线程的局部变量将自动被垃圾回收，所以显式调用该方法清除线程的局部变量并不是必须的操作，但它可以加快内存回收的速度。
-protected Object initialValue()返回该线程局部变量的初始值，该方法是一个protected的方法，显然是为了让子类覆盖而设计的。这个方法是一个延迟调用方法，在线程第1次调用get()或set(Object)时才执行，并且仅执行1次。ThreadLocal中的缺省实现直接返回一个null。
-　　值得一提的是，在JDK5.0中，ThreadLocal已经支持泛型，该类的类名已经变为ThreadLocal<T>。API方法也相应进行了调整，新版本的API方法分别是void set(T value)、T get()以及T initialValue()。
-　　ThreadLocal是如何做到为每一个线程维护变量的副本的呢？其实实现的思路很简单：在ThreadLocal类中有一个Map，用于存储每一个线程的变量副本，Map中元素的键为线程对象，而值对应线程的变量副本。我们自己就可以提供一个简单的实现版本：
-[java] view plain copy print?
-
-
+　　早在JDK 1.2的版本中就提供java.lang.ThreadLocal，ThreadLocal为解决多线程程序的并发问题提供了一种新的思路。使用这个工具类可以很简洁地编写出优美的多线程程序。</br>
+　　当使用ThreadLocal维护变量时，ThreadLocal为每个使用该变量的线程提供独立的变量副本，所以每一个线程都可以独立地改变自己的副本，而不会影响其它线程所对应的副本。</br>
+　　从线程的角度看，目标变量就象是线程的本地变量，这也是类名中“Local”所要表达的意思。</br>
+　　所以，在Java中编写线程局部变量的代码相对来说要笨拙一些，因此造成线程局部变量没有在Java开发者中得到很好的普及。</br>
+ThreadLocal的接口方法</br>
+ThreadLocal类接口很简单，只有4个方法，我们先来了解一下：</br>
+void set(Object value)设置当前线程的线程局部变量的值。</br>
+public Object get()该方法返回当前线程所对应的线程局部变量。</br>
+public void remove()将当前线程局部变量的值删除，目的是为了减少内存的占用，该方法是JDK 5.0新增的方法。需要指出的是，当线程结束后，对应该线程的局部变量将自动被垃圾回收，所以显式调用该方法清除线程的局部变量并不是必须的操作，但它可以加快内存回收的速度。</br>
+protected Object initialValue()返回该线程局部变量的初始值，该方法是一个protected的方法，显然是为了让子类覆盖而设计的。这个方法是一个延迟调用方法，在线程第1次调用get()或set(Object)时才执行，并且仅执行1次。ThreadLocal中的缺省实现直接返回一个null。</br>
+　　值得一提的是，在JDK5.0中，ThreadLocal已经支持泛型，该类的类名已经变为ThreadLocal<T>。API方法也相应进行了调整，新版本的API方法分别是void set(T value)、T get()以及T initialValue()。</br>
+　　ThreadLocal是如何做到为每一个线程维护变量的副本的呢？其实实现的思路很简单：在ThreadLocal类中有一个Map，用于存储每一个线程的变量副本，Map中元素的键为线程对象，而值对应线程的变量副本。我们自己就可以提供一个简单的实现版本：</br>
+```obj
+    
 package com.test;  
   
 public class TestNum {  
@@ -403,9 +402,10 @@ public class TestNum {
         }  
     }  
 }  
-
+```
 
  通常我们通过匿名内部类的方式定义ThreadLocal的子类，提供初始的变量值，如例子中①处所示。TestClient线程产生一组序列号，在③处，我们生成3个TestClient，它们共享同一个TestNum实例。运行以上代码，在控制台上输出以下的结果：
+ ```
 thread[Thread-0] --> sn[1]
 thread[Thread-1] --> sn[1]
 thread[Thread-2] --> sn[1]
@@ -415,11 +415,10 @@ thread[Thread-1] --> sn[3]
 thread[Thread-2] --> sn[2]
 thread[Thread-0] --> sn[3]
 thread[Thread-2] --> sn[3]
+```
 考察输出的结果信息，我们发现每个线程所产生的序号虽然都共享同一个TestNum实例，但它们并没有发生相互干扰的情况，而是各自产生独立的序列号，这是因为我们通过ThreadLocal为每一个线程提供了单独的副本。                                         java.lang.ThreadLocal<T>的具体实现
         那么到底ThreadLocal类是如何实现这种“为每个线程提供不同的变量拷贝”的呢？先来看一下ThreadLocal的set()方法的源码是如何实现的：
-[java] view plain copy print?
-
-
+```objc
 /** 
     * Sets the current thread's copy of this thread-local variable 
     * to the specified value.  Most subclasses will have no need to 
@@ -437,13 +436,11 @@ thread[Thread-2] --> sn[3]
        else  
            createMap(t, value);  
    }  
-
-在这个方法内部我们看到，首先通过getMap(Thread t)方法获取一个和当前线程相关的ThreadLocalMap，然后将变量的值设置到这个ThreadLocalMap对象中，当然如果获取到的ThreadLocalMap对象为空，就通过createMap方法创建。
-线程隔离的秘密，就在于ThreadLocalMap这个类。ThreadLocalMap是ThreadLocal类的一个静态内部类，它实现了键值对的设置和获取（对比Map对象来理解），每个线程中都有一个独立的ThreadLocalMap副本，它所存储的值，只能被当前线程读取和修改。ThreadLocal类通过操作每一个线程特有的ThreadLocalMap副本，从而实现了变量访问在不同线程中的隔离。因为每个线程的变量都是自己特有的，完全不会有并发错误。还有一点就是，ThreadLocalMap存储的键值对中的键是this对象指向的ThreadLocal对象，而值就是你所设置的对象了。
-为了加深理解，我们接着看上面代码中出现的getMap和createMap方法的实现：
-[java] view plain copy print?
-
-
+```
+在这个方法内部我们看到，首先通过getMap(Thread t)方法获取一个和当前线程相关的ThreadLocalMap，然后将变量的值设置到这个ThreadLocalMap对象中，当然如果获取到的ThreadLocalMap对象为空，就通过createMap方法创建。</br>
+线程隔离的秘密，就在于ThreadLocalMap这个类。ThreadLocalMap是ThreadLocal类的一个静态内部类，它实现了键值对的设置和获取（对比Map对象来理解），每个线程中都有一个独立的ThreadLocalMap副本，它所存储的值，只能被当前线程读取和修改。ThreadLocal类通过操作每一个线程特有的ThreadLocalMap副本，从而实现了变量访问在不同线程中的隔离。因为每个线程的变量都是自己特有的，完全不会有并发错误。还有一点就是，ThreadLocalMap存储的键值对中的键是this对象指向的ThreadLocal对象，而值就是你所设置的对象了。</br>
+为了加深理解，我们接着看上面代码中出现的getMap和createMap方法的实现：</br>
+```objc
 /** 
  * Get the map associated with a ThreadLocal. Overridden in 
  * InheritableThreadLocal. 
@@ -466,11 +463,9 @@ ThreadLocalMap getMap(Thread t) {
 void createMap(Thread t, T firstValue) {  
     t.threadLocals = new ThreadLocalMap(this, firstValue);  
 }  
-
+```
 接下来再看一下ThreadLocal类中的get()方法:
-[java] view plain copy print?
-
-
+```objc
 /** 
  * Returns the value in the current thread's copy of this 
  * thread-local variable.  If the variable has no value for the 
@@ -489,11 +484,11 @@ public T get() {
     }  
     return setInitialValue();  
 }  
-
+```
 再来看setInitialValue()方法：
-[java] view plain copy print?
 
 
+```objc
 /** 
     * Variant of set() to establish initialValue. Used instead 
     * of set() in case user has overridden the set() method. 
@@ -510,7 +505,7 @@ public T get() {
            createMap(t, value);  
        return value;  
    }  
-
+```
 　　获取和当前线程绑定的值时，ThreadLocalMap对象是以this指向的ThreadLocal对象为键进行查找的，这当然和前面set()方法的代码是相呼应的。
 
 
@@ -527,13 +522,15 @@ public T get() {
 1. Nagel算法
         TCP/IP协议中，无论发送多少数据，总是要在数据前面加上协议头，同时，对方接收到数据，也需要发送ACK表示确认。为了尽可能的利用网络带宽，TCP总是希望尽可能的发送足够大的数据。（一个连接会设置MSS参数，因此，TCP/IP希望每次都能够以MSS尺寸的数据块来发送数据）。Nagle算法就是为了尽可能发送大块数据，避免网络中充斥着许多小数据块。
         Nagle算法的基本定义是任意时刻，最多只能有一个未被确认的小段。 所谓“小段”，指的是小于MSS尺寸的数据块，所谓“未被确认”，是指一个数据块发送出去后，没有收到对方发送的ACK确认该数据已收到。
-        Nagle算法的规则（可参考tcp_output.c文件里tcp_nagle_check函数注释）：
+Nagle算法的规则（可参考tcp_output.c文件里tcp_nagle_check函数注释）：
+
       （1）如果包长度达到MSS，则允许发送；
       （2）如果该包含有FIN，则允许发送；
       （3）设置了TCP_NODELAY选项，则允许发送；
       （4）未设置TCP_CORK选项时，若所有发出去的小数据包（包长度小于MSS）均被确认，则允许发送；
       （5）上述条件都未满足，但发生了超时（一般为200ms），则立即发送。
-        Nagle算法只允许一个未被ACK的包存在于网络，它并不管包的大小，因此它事实上就是一个扩展的停-等协议，只不过它是基于包停-等的，而不是基于字节停-等的。Nagle算法完全由TCP协议的ACK机制决定，这会带来一些问题，比如如果对端ACK回复很快的话，Nagle事实上不会拼接太多的数据包，虽然避免了网络拥塞，网络总体的利用率依然很低。
+      
+   Nagle算法只允许一个未被ACK的包存在于网络，它并不管包的大小，因此它事实上就是一个扩展的停-等协议，只不过它是基于包停-等的，而不是基于字节停-等的。Nagle算法完全由TCP协议的ACK机制决定，这会带来一些问题，比如如果对端ACK回复很快的话，Nagle事实上不会拼接太多的数据包，虽然避免了网络拥塞，网络总体的利用率依然很低。
         Nagle算法是silly window syndrome(SWS)预防算法的一个半集。SWS算法预防发送少量的数据，Nagle算法是其在发送方的实现，而接收方要做的时不要通告缓冲空间的很小增长，不通知小窗口，除非缓冲区空间有显著的增长。这里显著的增长定义为完全大小的段（MSS）或增长到大于最大窗口的一半。
 注意：BSD的实现是允许在空闲链接上发送大的写操作剩下的最后的小段，也就是说，当超过1个MSS数据发送时，内核先依次发送完n个MSS的数据包，然后再发送尾部的小数据包，其间不再延时等待。（假设网络不阻塞且接收窗口足够大）
         举个例子，比如之前的blog中的实验，一开始client端调用socket的write操作将一个int型数据（称为A块）写入到网络中，由于此时连接是空闲的（也就是说还没有未被确认的小段），因此这个int型数据会被马上发送到server端，接着，client端又调用write操作写入‘\r\n’（简称B块），这个时候，A块的ACK没有返回，所以可以认为已经存在了一个未被确认的小段，所以B块没有立即被发送，一直等待A块的ACK收到（大概40ms之后），B块才被发送。整个过程如图所示：
