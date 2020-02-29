@@ -2,13 +2,13 @@
 layout:     post
 title:      muduo阅读笔记之第9章
 subtitle:   分布式系统工程实践
-date:       2018-04-01
+date:       2018-03-28
 author:     BY
-header-img: img/post-bg-hacker.jpg
+header-img: img/post-bg-swift.jpg
 catalog: true
 tags:
     - muduo
-
+---
 
 
 ### 在编程模型方面，分布式对象已被淘汰
