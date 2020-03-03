@@ -22,8 +22,12 @@ CSP的模式比较适合Boss-Worker模式的任务分发机制，它的侵入性
    对于某个 Actor 我们可以为某个消息类型注册多个消息处理函数，那么此消息类型对应的多个消息处理函数会按照注册的顺序被串行执行下去
    
    线程按顺序处理 Actor 收到的消息，一个消息未处理完成不会处理消息队列中的下一个消息 我们可以想象，如果存在三个 Actor，其中两个 Actor 的消息处理函数中存在死循环（例如上例中的 while(true)），那么它们一旦执行就会霸占两条线程，若线程池中没有多余线程，那么另一个 Actor 将被“饿死”（永远得不到执行）。我们可以在设计上避免这种 Actor 的出现，当然也可以适当的调整线程池的大小来解决此问题。Theron 中，线程池中线程的数量是可以动态控制的，线程利用率也可以测量。但是务必注意的是，过多的线程必然导致过大的线程上下文切换开销。
+   
+   Actor 模型强调了一切皆为 Actor，这自然可以作为我们使用 Theron 的一个准则。但过多的 Actor 存在必然导致 Actor 间频繁的通信。适当的使用 Actor 并且结合 Object 模型也许会是一个不错的选择，例如，我们可以对系统进行适当划分，得到一些功能相对独立的模块，每个模块为一个 Actor，模块内部依然使用 Object 模型，模块间通过 Actor 的消息机制进行通信。
 
 # 参考
 
 - [关于并发模型 Actor 和 CSP](https://blog.csdn.net/hotdust/article/details/72475630)
 - [并发之痛 Thread，Goroutine，Actor](http://jolestar.com/parallel-programming-model-thread-goroutine-actor/)
+- [通过Actor模型解决C++ 并发编程的一种思维 — Theron 库简述](https://blog.csdn.net/sigh667/article/details/76438785)
+
