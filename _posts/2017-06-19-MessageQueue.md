@@ -56,4 +56,4 @@ broker投递到consumer的消息在需要重发之前询问consumer消息处理�
 # 参考
 
 - [RPC消息队列的技术思想 ](http://purecpp.org/detail?id=2155)
-- [https://tech.meituan.com/2016/07/01/mq-design.html](https://tech.meituan.com/2016/07/01/mq-design.html)
+- [消息队列设计精要](https://tech.meituan.com/2016/07/01/mq-design.html)
