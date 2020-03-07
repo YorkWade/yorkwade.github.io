@@ -19,5 +19,4 @@ tags:
 
 - [我所理解的C++反射机制](https://blog.csdn.net/K346K346/article/details/51698184)
 - [一种更通用的编译期反射](https://blog.csdn.net/qicosmos/article/details/53842493)
- 
- 
+- [magic_get - A reflection techniques using modern C++ ](http://purecpp.org/detail?id=2055)
