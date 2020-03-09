@@ -167,6 +167,6 @@ class AtomicPointer {
 >- [【译】Memory Reordering Caught in the Act](https://www.jianshu.com/p/5b317882dda6)
 >- [leveldb 源码分析(三) – Write](https://youjiali1995.github.io/storage/leveldb-write/)
 >- [理解 C++ 的 Memory Order](https://senlinzhan.github.io/2017/12/04/cpp-memory-order/)
-
+>- [无锁编程本质论](https://toutiao.io/posts/152568/app_preview)
 
 
