@@ -20,7 +20,7 @@ LRU(Least Recently Used) Cache是一种缓存替换算法，如果超过容量�
 ## 一个C++实现
 
 
-```objc
+```cpp
     /*************************************************************************
         > File Name: lru_cache_template.hpp
         > Author: ce39906
@@ -155,7 +155,7 @@ leveldb中主要涉及4个数据结构，是依次递进的关系，分别是：
 看到leveldb的这几个类名，我有一种骂娘的感觉，LRUHandle应该为LRUNode，HandleTable应该命名为HanshTable。也许没真正理解作者的逼格。
 
 ### LRUHandle
-```objc
+```cpp
     struct LRUHandle {
       void* value;
       void (*deleter)(const Slice&, void* value);
@@ -183,7 +183,7 @@ leveldb中主要涉及4个数据结构，是依次递进的关系，分别是：
 ### HandleTable
 作者自己实现Hashmap，采用拉链法实现，也就是在冲突发生时，需要使用链表来解决冲突问题。工业级的hash表需要考虑扩容。hash函数使用取模方法，但是取模的实现上，比较反人类，linux的无锁队列中，也有类似实现，这可能就是大牛的不同之处吧。
 
-```objc
+```cpp
 class HandleTable {
      public:
 
@@ -216,7 +216,7 @@ LRUHandle* Insert(LRUHandle* h) {
   }
 ```
 
-```objc
+```cpp
   // Return a pointer to slot that points to a cache entry that
   // matches key/hash.  If there is no such cache entry, return a
   // pointer to the trailing slot in the corresponding linked list.
@@ -232,7 +232,7 @@ LRUHandle* Insert(LRUHandle* h) {
 ### LRUCache
 有了链表和哈希表，就要看LRUCache如何实现“近期最少使用”功能了。
 
-```objc
+```cpp
 // A single shard of sharded cache.
 class LRUCache {
     ...
@@ -290,7 +290,7 @@ Cache::Handle* LRUCache::Insert(
 }
 ```
 
-```objc
+```cpp
 // A single shard of sharded cache.
 当时leveldb编写比较早，还没有智能指针，这部分可以使用share_ptr代替
 void LRUCache::Unref(LRUHandle* e) {
@@ -304,7 +304,7 @@ void LRUCache::Unref(LRUHandle* e) {
 }
 ```
 查找和删除函数，水到渠成。
-```objc
+```cpp
 Cache::Handle* LRUCache::Lookup(const Slice& key, uint32_t hash) {
   MutexLock l(&mutex_);
   LRUHandle* e = table_.Lookup(key, hash);
@@ -317,7 +317,7 @@ Cache::Handle* LRUCache::Lookup(const Slice& key, uint32_t hash) {
 }
 ```
 
-```objc
+```cpp
 void LRUCache::Erase(const Slice& key, uint32_t hash) {
   MutexLock l(&mutex_);
   LRUHandle* e = table_.Remove(key, hash);
@@ -335,7 +335,7 @@ ShardedLRUCache类，实际上到S3，一个标准的LRU Cache已经实现了，
 
 ![](https://i.imgur.com/Gtnn06N.jpg)
 
-```objc
+```cpp
 static const int kNumShardBits = 4;
 static const int kNumShards = 1 << kNumShardBits;
 
@@ -389,13 +389,13 @@ class ShardedLRUCache : public Cache {
 };
 ```
 
-```objc
+```cpp
 static inline uint32_t HashSlice(const Slice& s) {
     return Hash(s.data(), s.size(), 0);
   }
 ```
 
-```objc
+```cpp
 
 uint32_t Hash(const char* data, size_t n, uint32_t seed) {
   // Similar to murmur hash
