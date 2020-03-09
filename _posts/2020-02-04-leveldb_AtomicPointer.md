@@ -34,14 +34,14 @@ AtomicPointer 是 leveldb 提供的一个原子指针操作类，使用了基于
 -    在 CPU cache 的影响下，一个 CPU 执行了某个指令，不会立即被其它 CPU 看见。
 
 　　原子操作说的是，一个操作的状态要么就是未执行，要么就是已完成，不会看见中间状态。例如，在 C++11 中，下面程序的结果是未定义的：
-```objc
+```cpp
           int64_t i = 0;     // global variable
 Thread-1:              Thread-2:
 i = 100;               std::cout << i;
 ```
 C++ 并不保证i = 100是原子操作，因为在某些 CPU Architecture 中，写入int64_t需要两个 CPU 指令，所以 Thread-2 可能会读取到i在赋值过程的中间状态。
 另一方面，为了优化程序的执行性能，CPU 可能会调整指令的执行顺序。为阐述这一点，下面的例子中，让我们假设所有操作都是原子操作：
-```objc
+```cpp
           int x = 0;     // global variable
           int y = 0;     // global variable
 		  
