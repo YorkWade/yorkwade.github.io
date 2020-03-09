@@ -11,8 +11,6 @@ tags:
 ---
 
 
-![Marcus'Buchecha'Almeida](http://mjrnxewya3t1in23ybpwjw59.wpengine.netdna-cdn.com/wp-content/uploads/buchecha-marcus-almeida-roger-gracie.jpg)
-
 ### 理论简述
 
 布隆过滤器（bloom filter）是通过多个hash算法来共同判断某个元素是否在某个集合内，利用多个随机数重复的小概率，来实现的一种高效的数据结构。当我们在 bloom filter 查找 key 时，有返回两种情况：
@@ -20,6 +18,10 @@ tags:
 - key 存在，那么 key 可能存在
 
 也就是说 bloom filter 具有一定的误判率，但是空间利用率更高，牺牲一点小概率也是可以接受的。
+
+### 实现要点
+- 几个哈希表？几位的bit数组？每个哈希值插入几个元素？
+- bit数组如何实现？
 
 ### 数学结论
 bloom filter 使用多个hash函数映射到“位数组”中，因此空间利用率很高。
