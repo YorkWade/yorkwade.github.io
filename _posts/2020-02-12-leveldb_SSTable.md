@@ -32,7 +32,7 @@ tags:
 布隆过滤器用于加快 SSTable 磁盘文件的 Key 定位效率。如果没有布隆过滤器，它需要对 SSTable 进行二分查找，Key 如果不在里面，就需要进行多次 IO 读才能确定，查完了才发现原来是一场空。布隆过滤器的作用就是避免在 Key 不存在的时候浪费 IO 操作。通过查询布隆过滤器可以一次性知道 Key 有没有可能在里面。
 
 单个布隆过滤器中存放的是一个定长的位图数组，该位图数组中存放了若干个 Key 的指纹信息。这若干个 Key 来源于 DataBlock 中连续的一个范围。FilterBlock 块中存在多个连续的布隆过滤器位图数组，每个数组负责指纹化 SSTable 中的一部分数据。
-```obj
+```c++
 struct FilterEntry {
   byte[] rawbits;
 }
@@ -67,7 +67,7 @@ Filter Block相关源码，参考[FilterPolicy&Bloom之2](https://blog.csdn.net/
 
 ### MetaIndex Block 
 MetaIndexBlock 存储了前面一系列 FilterBlock 的元信息，它在结构上和 DataBlock 是一样的，只不过里面 Entry 存储的 Key 是带固定前缀的过滤器名称，Value 是对应的 FilterBlock 在文件中的偏移量和长度。
-```obj
+```c++
 key = "filter." + filterName
 // value 定义了数据块的位置和大小
 struct BlockHandler {
